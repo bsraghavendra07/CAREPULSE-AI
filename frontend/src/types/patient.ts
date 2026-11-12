@@ -13,5 +13,11 @@ export interface PatientProfile {
     systolic_bp: number;
     body_temperature: number;
   };
+  department?: string;
+  specialist_name?: string;
+  specialist_title?: string;
+  specialist_email?: string;
+  specialist_initials?: string;
+  phone_extension?: string;
 }
 

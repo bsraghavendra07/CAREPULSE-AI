@@ -40,7 +40,18 @@ A real-time remote patient deterioration monitoring system designed for post-dis
    - Fully synthetic Synthea demographics and Observations.
    - Built-in FHIR Inspector UI with JSON syntax highlighting and one-click copy.
 
-8. **Live-Computed Performance Metrics:**
+8. **Smart Specialist Routing & Specialist Alert Center:**
+   - Automatic patient-to-specialist clinical categorization (Cardiology, Pulmonology, Neurology, Nephrology, Endocrinology, Critical Care).
+   - Dedicated **Specialist Alert Center** (`/alerts`) with KPI statistics, department-wise distribution, multi-axis filtering, and action workflows (Acknowledge, Review, Resolve).
+   - All patient cards on both the **Patients Page** (`/patients`) and **Ward Census** prominently display the assigned department, specialist name, clinical specialty, and organ badge icons.
+   - Dual Emergency Escalation: All `URGENT` alerts are simultaneously queued to the specialist dashboard and the central emergency queue.
+
+9. **Unsupervised Isolation Forest ML Anomaly Engine:**
+   - Scikit-learn Isolation Forest trained on continuous physiological vitals (`HR`, `SpO₂`, `RR`).
+   - Generates normalized anomaly scores ($0.0 - 1.0$) with feature deviation attribution.
+   - Strictly distinguishes anomaly scores from clinical deterioration probabilities to prevent false reassurance or alarm fatigue.
+
+10. **Live-Computed Performance Metrics:**
    - Zero hardcoded statistics. All metrics accumulate live from runtime counters during simulation replay and scenario execution.
 
 ---

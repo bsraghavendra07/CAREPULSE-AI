@@ -73,6 +73,20 @@ export interface ActiveSimulationEvent {
   params: Record<string, any>;
 }
 
+export interface MLAnomalyPrediction {
+  model_version: string;
+  model_type: string;
+  timestamp: string;
+  anomaly_score: number;
+  raw_decision_score: number;
+  is_anomaly: boolean;
+  anomaly_level: 'NORMAL' | 'BORDERLINE' | 'ELEVATED_ANOMALY' | 'SEVERE_ANOMALY';
+  top_deviating_features: string[];
+  metric_type: string;
+  is_supervised_risk_prediction: boolean;
+  clinical_distinction_disclaimer: string;
+}
+
 export interface TelemetryTick {
   timestamp: string;
   patient_id: string;
@@ -82,6 +96,8 @@ export interface TelemetryTick {
   news2: NEWS2Score;
   personalized: PersonalizedInsight;
   suggested_specialty?: SuggestedSpecialty;
+  routed_alert?: any;
+  ml_anomaly?: MLAnomalyPrediction;
   fhir_observation_id: string;
   probe_removed?: boolean;
   active_simulation_event?: ActiveSimulationEvent | null;

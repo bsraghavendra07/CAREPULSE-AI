@@ -1,6 +1,7 @@
 import { PatientProfile } from '../types/patient';
 import { PerformanceReport } from '../types/telemetry';
 import { FHIRBundle } from '../types/fhir';
+import { RoutedAlert, AlertStats } from '../types/alert';
 
 const API_BASE = '/api';
 
@@ -64,76 +65,6 @@ export async function fetchActiveScenarios(): Promise<Record<string, string | nu
   return res.json();
 }
 
-export async function startSimulationEvent(
-  patientId: string,
-  eventType: string,
-  duration: number = 30,
-  params: Record<string, any> = {}
-): Promise<any> {
-  const res = await fetch(`${API_BASE}/scenarios/event/start`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      patient_id: patientId,
-      event_type: eventType,
-      duration,
-      params,
-    }),
-  });
-  if (!res.ok) throw new Error(`Failed to start simulation event: ${res.statusText}`);
-  return res.json();
-}
-
-export async function stopSimulationEvent(patientId: string): Promise<any> {
-  const res = await fetch(`${API_BASE}/scenarios/event/stop`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ patient_id: patientId }),
-  });
-  if (!res.ok) throw new Error(`Failed to stop simulation event: ${res.statusText}`);
-  return res.json();
-}
-
-export async function restoreProbe(patientId: string): Promise<any> {
-  const res = await fetch(`${API_BASE}/scenarios/event/restore_probe`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ patient_id: patientId }),
-  });
-  if (!res.ok) throw new Error(`Failed to restore probe: ${res.statusText}`);
-  return res.json();
-}
-
-export async function fetchSimulationEventStatus(patientId: string): Promise<any> {
-  const res = await fetch(`${API_BASE}/scenarios/event/status?patient_id=${patientId}`);
-  if (!res.ok) return { active_event: null };
-  return res.json();
-}
-
-export async function pauseSimulation(): Promise<any> {
-  const res = await fetch(`${API_BASE}/simulation/pause`, { method: 'POST' });
-  if (!res.ok) throw new Error(`Failed to pause simulation: ${res.statusText}`);
-  return res.json();
-}
-
-export async function resumeSimulation(): Promise<any> {
-  const res = await fetch(`${API_BASE}/simulation/resume`, { method: 'POST' });
-  if (!res.ok) throw new Error(`Failed to resume simulation: ${res.statusText}`);
-  return res.json();
-}
-
-export async function resetSimulation(): Promise<any> {
-  const res = await fetch(`${API_BASE}/simulation/reset`, { method: 'POST' });
-  if (!res.ok) throw new Error(`Failed to reset simulation: ${res.statusText}`);
-  return res.json();
-}
-
-export async function fetchSimulationState(): Promise<{ is_paused: boolean; speed_factor: number; tick_number: number }> {
-  const res = await fetch(`${API_BASE}/simulation/state`);
-  if (!res.ok) return { is_paused: false, speed_factor: 1, tick_number: 0 };
-  return res.json();
-}
-
 export async function ingestFhirObservation(payload: any): Promise<any> {
   const res = await fetch(`${API_BASE}/fhir/observation`, {
     method: 'POST',
@@ -141,6 +72,64 @@ export async function ingestFhirObservation(payload: any): Promise<any> {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Failed to ingest FHIR observation: ${res.statusText}`);
+  return res.json();
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// SMART SPECIALIST ALERTS API
+// ─────────────────────────────────────────────────────────────────────
+
+export async function fetchRoutedAlerts(params?: {
+  department?: string;
+  status?: string;
+  severity?: string;
+  patient_id?: string;
+}): Promise<RoutedAlert[]> {
+  const query = new URLSearchParams();
+  if (params?.department && params.department !== 'all') query.set('department', params.department);
+  if (params?.status && params.status !== 'all') query.set('status', params.status);
+  if (params?.severity && params.severity !== 'all') query.set('severity', params.severity);
+  if (params?.patient_id) query.set('patient_id', params.patient_id);
+
+  const url = `${API_BASE}/alerts/?${query.toString()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch routed alerts: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchAlertStats(): Promise<AlertStats> {
+  const res = await fetch(`${API_BASE}/alerts/stats`);
+  if (!res.ok) throw new Error(`Failed to fetch alert stats: ${res.statusText}`);
+  return res.json();
+}
+
+export async function acknowledgeAlert(alertId: string, clinicianName: string = 'Dr. Rivera'): Promise<RoutedAlert> {
+  const res = await fetch(`${API_BASE}/alerts/${alertId}/acknowledge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clinician_name: clinicianName }),
+  });
+  if (!res.ok) throw new Error(`Failed to acknowledge alert ${alertId}: ${res.statusText}`);
+  return res.json();
+}
+
+export async function reviewAlert(alertId: string, clinicianName: string = 'Dr. Rivera'): Promise<RoutedAlert> {
+  const res = await fetch(`${API_BASE}/alerts/${alertId}/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clinician_name: clinicianName }),
+  });
+  if (!res.ok) throw new Error(`Failed to review alert ${alertId}: ${res.statusText}`);
+  return res.json();
+}
+
+export async function resolveAlert(alertId: string, clinicianName: string = 'Dr. Rivera'): Promise<RoutedAlert> {
+  const res = await fetch(`${API_BASE}/alerts/${alertId}/resolve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clinician_name: clinicianName }),
+  });
+  if (!res.ok) throw new Error(`Failed to resolve alert ${alertId}: ${res.statusText}`);
   return res.json();
 }
 

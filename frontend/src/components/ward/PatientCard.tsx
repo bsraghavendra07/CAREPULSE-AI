@@ -4,7 +4,7 @@ import { TelemetryTick } from '../../types/telemetry';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { ProvenanceBadge } from '../patient-detail/ProvenanceBadge';
-import { Heart, Activity, AlertTriangle, Wind, Thermometer, User } from 'lucide-react';
+import { Heart, Activity, AlertTriangle, Wind, Thermometer, User, Stethoscope, Droplets, Brain } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface PatientCardProps {
@@ -14,6 +14,98 @@ interface PatientCardProps {
   onSelect: () => void;
   activeScenario?: string | null;
 }
+
+const getSpecialistInfo = (patient: PatientProfile) => {
+  if (patient.department && patient.specialist_name) {
+    return {
+      department: patient.department,
+      specialistName: patient.specialist_name,
+      specialistTitle: patient.specialist_title || 'Attending Specialist',
+    };
+  }
+  const cond = (patient.condition || '').toLowerCase();
+  if (
+    cond.includes('heart') ||
+    cond.includes('myocardial') ||
+    cond.includes('cardiac') ||
+    cond.includes('infarction') ||
+    cond.includes('arrhythmia') ||
+    cond.includes('fibrillation')
+  ) {
+    return {
+      department: 'Cardiology',
+      specialistName: 'Dr. Robert Rivera, MD',
+      specialistTitle: 'Senior Cardiologist & Electrophysiologist',
+    };
+  }
+  if (
+    cond.includes('copd') ||
+    cond.includes('respiratory') ||
+    cond.includes('pneumonia') ||
+    cond.includes('asthma')
+  ) {
+    return {
+      department: 'Pulmonology',
+      specialistName: 'Dr. Elena Rostova, MD',
+      specialistTitle: 'Consultant Pulmonologist & Respiratory Lead',
+    };
+  }
+  if (
+    cond.includes('sepsis') ||
+    cond.includes('post-op') ||
+    cond.includes('arthroplasty') ||
+    cond.includes('surgery') ||
+    cond.includes('abdominal')
+  ) {
+    return {
+      department: 'General Medicine / Critical Care',
+      specialistName: 'Dr. Marcus Vance, MD',
+      specialistTitle: 'Consultant in Intensive Care & Acute Medicine',
+    };
+  }
+  return {
+    department: 'General Medicine',
+    specialistName: 'Dr. Sarah Jenkins, MD',
+    specialistTitle: 'Attending Hospitalist',
+  };
+};
+
+const getDepartmentConfig = (department: string) => {
+  const d = department.toLowerCase();
+  if (d.includes('cardio')) {
+    return {
+      icon: Heart,
+      color: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+      badgeColor: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+    };
+  }
+  if (d.includes('pulmon') || d.includes('resp')) {
+    return {
+      icon: Wind,
+      color: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+      badgeColor: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
+    };
+  }
+  if (d.includes('neuro')) {
+    return {
+      icon: Brain,
+      color: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+      badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+    };
+  }
+  if (d.includes('critical') || d.includes('general')) {
+    return {
+      icon: Activity,
+      color: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+      badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    };
+  }
+  return {
+    icon: Stethoscope,
+    color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    badgeColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+  };
+};
 
 export function PatientCard({
   patient,
@@ -133,6 +225,33 @@ export function PatientCard({
             </Badge>
           )}
         </div>
+
+        {/* Assigned Department & Specialist */}
+        {(() => {
+          const specInfo = getSpecialistInfo(patient);
+          const deptCfg = getDepartmentConfig(specInfo.department);
+          const DeptIcon = deptCfg.icon;
+          return (
+            <div className="mt-2.5 rounded-xl bg-muted/30 border border-border/80 p-2 flex items-center justify-between">
+              <div className="flex items-center space-x-2 overflow-hidden pr-2">
+                <div className={`p-1 rounded-md border ${deptCfg.color} shrink-0`}>
+                  <DeptIcon className="h-3.5 w-3.5" />
+                </div>
+                <div className="truncate">
+                  <div className="text-[11px] font-semibold text-foreground truncate leading-tight">
+                    {specInfo.specialistName}
+                  </div>
+                  <div className="text-[9.5px] text-muted-foreground truncate leading-tight">
+                    {specInfo.specialistTitle}
+                  </div>
+                </div>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0 ${deptCfg.badgeColor}`}>
+                {specInfo.department}
+              </span>
+            </div>
+          );
+        })()}
       </CardHeader>
 
       <CardContent className="p-4 pt-2">

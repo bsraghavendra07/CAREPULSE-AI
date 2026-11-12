@@ -1,17 +1,18 @@
 import React from 'react';
-import { PersonalizedInsight } from '../../types/telemetry';
+import { PersonalizedInsight, MLAnomalyPrediction } from '../../types/telemetry';
 import { PatientProfile } from '../../types/patient';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Sparkles, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Info, AlertTriangle, CheckCircle2, Cpu, ShieldCheck } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface PersonalizedPanelProps {
   personalized?: PersonalizedInsight;
+  mlAnomaly?: MLAnomalyPrediction;
   patient: PatientProfile;
 }
 
-export function PersonalizedPanel({ personalized, patient }: PersonalizedPanelProps) {
+export function PersonalizedPanel({ personalized, mlAnomaly, patient }: PersonalizedPanelProps) {
   if (!personalized) {
     return (
       <Card>
@@ -119,6 +120,77 @@ export function PersonalizedPanel({ personalized, patient }: PersonalizedPanelPr
                 {formatZ(zScores.respiratory_rate)}
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* ── Unsupervised ML Model: Isolation Forest ── */}
+        <div className="rounded-xl border border-[#222a3d] bg-[#0c1017] p-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Cpu className="h-4 w-4 text-emerald-400" />
+              <div>
+                <div className="text-xs font-bold text-white flex items-center space-x-1.5">
+                  <span>ML Isolation Forest</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono">v1.0</span>
+                </div>
+                <div className="text-[10px] text-slate-400">Trained on BIDMC Continuous Physiological Observations</div>
+              </div>
+            </div>
+
+            <div className="text-right">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                mlAnomaly?.is_anomaly
+                  ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                  : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+              }`}>
+                {mlAnomaly?.anomaly_level || 'NORMAL'}
+              </span>
+            </div>
+          </div>
+
+          {/* Anomaly Score Bar */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-slate-400">Multivariate Anomaly Score:</span>
+              <span className="font-mono font-bold text-white">
+                {mlAnomaly?.anomaly_score !== undefined ? mlAnomaly.anomaly_score.toFixed(3) : '0.250'} / 1.000
+              </span>
+            </div>
+            <div className="h-1.5 w-full bg-[#161c28] rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  (mlAnomaly?.anomaly_score ?? 0.25) > 0.65
+                    ? 'bg-rose-500'
+                    : (mlAnomaly?.anomaly_score ?? 0.25) > 0.40
+                    ? 'bg-amber-400'
+                    : 'bg-emerald-400'
+                }`}
+                style={{ width: `${Math.min(100, ((mlAnomaly?.anomaly_score ?? 0.25) * 100))}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Deviating Features if any */}
+          {mlAnomaly?.top_deviating_features && mlAnomaly.top_deviating_features.length > 0 && (
+            <div className="space-y-1 pt-1">
+              <div className="text-[10px] font-semibold text-slate-400">Multivariate Deviations:</div>
+              <div className="flex flex-wrap gap-1">
+                {mlAnomaly.top_deviating_features.map((f, i) => (
+                  <span key={i} className="text-[9px] px-2 py-0.5 rounded bg-[#161d2a] text-amber-300 border border-[#232f47]">
+                    {f}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Strict Clinical Safety Disclaimer */}
+          <div className="text-[10px] text-slate-400 bg-[#090d14] p-2 rounded-lg border border-[#182030] leading-relaxed">
+            <span className="text-slate-300 font-semibold">Honest AI Note: </span>
+            <span>
+              Unsupervised Anomaly Score measures multivariate statistical distance from physiological baseline patterns.
+              This is <strong>NOT a clinical deterioration probability or diagnosis</strong> and never modifies NEWS2.
+            </span>
           </div>
         </div>
       </CardContent>

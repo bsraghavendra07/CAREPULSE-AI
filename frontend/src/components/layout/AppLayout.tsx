@@ -18,6 +18,8 @@ import {
   ChevronRight,
   X,
   Radio,
+  ShieldAlert,
+  BellRing,
 } from 'lucide-react';
 import { News2ScorePanel } from '../patient-detail/News2ScorePanel';
 import { PersonalizedPanel } from '../patient-detail/PersonalizedPanel';
@@ -129,6 +131,17 @@ export function AppLayout({
                 <FileJson className="h-4 w-4 text-emerald-400" />
                 <span>FHIR R4 / HAPI</span>
               </div>
+            </NavLink>
+
+            {/* Feature 3: Specialist Alert Center */}
+            <NavLink to="/alerts" className={navLinkClass}>
+              <div className="flex items-center space-x-2.5">
+                <ShieldAlert className="h-4 w-4 text-emerald-400" />
+                <span>Specialist Alert Center</span>
+              </div>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                LIVE
+              </span>
             </NavLink>
           </div>
 
@@ -338,6 +351,7 @@ export function AppLayout({
               />
               <PersonalizedPanel
                 personalized={latestTicks[selectedPatientModal.id]?.personalized}
+                mlAnomaly={latestTicks[selectedPatientModal.id]?.ml_anomaly}
                 patient={selectedPatientModal}
               />
             </div>
