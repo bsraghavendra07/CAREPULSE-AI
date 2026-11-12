@@ -1,0 +1,204 @@
+{
+  "started_at": "2026-11-12T10:11:22.288737+00:00",
+  "phases": {
+    "phase1_patient_profiles": {
+      "five_profiles_loaded": {
+        "pass": true,
+        "count": 5
+      },
+      "patient_ids_match": {
+        "pass": true,
+        "ids": [
+          "P-001",
+          "P-002",
+          "P-003",
+          "P-004",
+          "P-005"
+        ]
+      },
+      "p002_scale2_prescribed": {
+        "pass": true,
+        "value": true
+      },
+      "patient_specific_monitoring_config": {
+        "pass": true
+      }
+    },
+    "phase2_data_ingestion": {
+      "bidmc_replay_hr_spo2_rr": {
+        "pass": true,
+        "hr": {
+          "value": 77,
+          "source": "BIDMC"
+        },
+        "spo2": {
+          "value": 98,
+          "source": "BIDMC"
+        },
+        "rr": {
+          "value": 15.3,
+          "source": "BIDMC"
+        }
+      },
+      "accelerated_playback_control": {
+        "pass": true,
+        "factor": 5
+      },
+      "simulated_temperature": {
+        "pass": true,
+        "temp_value": 37.0,
+        "source": "SIMULATED"
+      },
+      "drift_spikes_motion_probe_removal": {
+        "pass": true,
+        "spike_flagged": true,
+        "motion_flagged": true,
+        "probe_removal_status": "LOW"
+      }
+    },
+    "phase3_clinical_engine": {
+      "news2_scale1_vs_scale2": {
+        "pass": true,
+        "scale1_spo2_pts": 3,
+        "scale2_spo2_pts": 0
+      },
+      "red_score_detection": {
+        "pass": true,
+        "has_red_score": true,
+        "red_param": "hr",
+        "triage_tier": "WATCH"
+      },
+      "personalized_rolling_baseline_and_zscore": {
+        "pass": true,
+        "baseline_hr": 71.34,
+        "z_score_hr": 27.84,
+        "is_advisory": false
+      },
+      "genuine_deterioration_not_rejected": {
+        "pass": true,
+        "artifact_flagged": false,
+        "status": "HIGH"
+      }
+    },
+    "phase4_fhir": {
+      "live_hapi_fhir_storage_and_retrieval": {
+        "pass": true,
+        "retrieved_observations": [
+          {
+            "vital": "heart_rate",
+            "hapi_id": "502428",
+            "status": "200 OK"
+          },
+          {
+            "vital": "oxygen_saturation",
+            "hapi_id": "502429",
+            "status": "200 OK"
+          },
+          {
+            "vital": "respiratory_rate",
+            "hapi_id": "502430",
+            "status": "200 OK"
+          },
+          {
+            "vital": "body_temperature",
+            "hapi_id": "502431",
+            "status": "200 OK"
+          }
+        ]
+      },
+      "local_fallback_store_verified": {
+        "pass": true,
+        "stored_id": "obs-3069d8b804fc"
+      }
+    },
+    "phase5_alert_management": {
+      "triage_tiers_verified": {
+        "pass": true,
+        "routine": "ROUTINE",
+        "watch": "WATCH",
+        "review": "REVIEW",
+        "urgent": "URGENT"
+      },
+      "alert_explanations_and_actions": {
+        "pass": true,
+        "reason": "Severe multi-organ physiological deterioration (NEWS2 = 17)",
+        "action": "Emergency critical care assessment & continuous monitoring"
+      },
+      "device_alert_separated_from_clinical": {
+        "pass": true,
+        "device_note": "Physiologically impossible HR=0.0; Physiologically impossible SpO2=0.0; Physiologically impossible Temp=20.0"
+      }
+    },
+    "phase6_scenarios": {
+      "all_six_scenarios_verified": {
+        "pass": true,
+        "scenarios": {
+          "sepsis": {
+            "patient_id": "P-003",
+            "trigger_status": 200,
+            "activated": true,
+            "clear_status": 200
+          },
+          "copd_exacerbation": {
+            "patient_id": "P-002",
+            "trigger_status": 200,
+            "activated": true,
+            "clear_status": 200
+          },
+          "cardiac_decompensation": {
+            "patient_id": "P-001",
+            "trigger_status": 200,
+            "activated": true,
+            "clear_status": 200
+          },
+          "motion_artifact": {
+            "patient_id": "P-004",
+            "trigger_status": 200,
+            "activated": true,
+            "clear_status": 200
+          },
+          "sensor_disconnect": {
+            "patient_id": "P-001",
+            "trigger_status": 200,
+            "activated": true,
+            "clear_status": 200
+          },
+          "normal_recovery": {
+            "patient_id": "P-005",
+            "trigger_status": 200,
+            "activated": true,
+            "clear_status": 200
+          }
+        }
+      }
+    },
+    "phase7_performance": {
+      "runtime_performance_metrics": {
+        "pass": true,
+        "alerts_per_patient_day": 0.0,
+        "total_monitored_patient_days": 0.0007,
+        "artifact_flags": 0,
+        "total_ticks": 63,
+        "news2_alerts_fired": 0
+      }
+    },
+    "phase8_final_verification": {
+      "backend_root_health": {
+        "pass": true,
+        "status": "operational"
+      },
+      "telemetry_history_stream": {
+        "pass": true,
+        "records_buffered": 14
+      }
+    }
+  },
+  "overall_summary": {
+    "total_checks": 21,
+    "passed_checks": 21,
+    "failed_checks": 0,
+    "pass_rate_percent": 100.0,
+    "status": "ALL CHECKS PASSED (100%)",
+    "finished_at": "2026-11-12T10:11:39.781447+00:00"
+  }
+}
