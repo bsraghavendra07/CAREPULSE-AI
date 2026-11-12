@@ -72,14 +72,30 @@ class ArtifactDetector:
         spo2 = _get_val(vitals, "spo2", "oxygen_saturation", default=98.0)
         temp = _get_val(vitals, "temp", "body_temperature", default=37.0)
 
+        # ── Rule 0: Probe Removal & Sensor Dropouts ──────────────────
+        if vitals.get("probe_removed") or vitals.get("_probe_removed") or (hr == 0.0 and spo2 == 0.0):
+            worst_status = "LOW"
+            notes.append("PROBE REMOVED: Pulse oximeter detached. SpO2=0%, HR flatlined (Sensor Disconnected).")
+
+        has_dropout = any(
+            isinstance(v, dict) and v.get("status") == "NO_READING"
+            for v in vitals.values()
+        )
+        if has_dropout:
+            if worst_status != "LOW":
+                worst_status = "LOW"
+            notes.append("Sensor dropout: Temporary loss of telemetry readings.")
+
         # ── Rule 1: Physiological impossibility ──────────────────────
         if hr < SQI_THRESHOLDS["HR_MIN"] or hr > SQI_THRESHOLDS["HR_MAX"]:
             worst_status = "LOW"
-            notes.append(f"Physiologically impossible HR={hr}")
+            if not (hr == 0.0 and spo2 == 0.0):
+                notes.append(f"Physiologically impossible HR={hr}")
 
         if spo2 < SQI_THRESHOLDS["SPO2_MIN"]:
             worst_status = "LOW"
-            notes.append(f"Physiologically impossible SpO2={spo2}")
+            if not (hr == 0.0 and spo2 == 0.0):
+                notes.append(f"Physiologically impossible SpO2={spo2}")
 
         if temp < SQI_THRESHOLDS["TEMP_MIN"] or temp > SQI_THRESHOLDS["TEMP_MAX"]:
             worst_status = "LOW"

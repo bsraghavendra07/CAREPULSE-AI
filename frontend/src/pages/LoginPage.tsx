@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  HeartPulse,
+  Hospital,
   Mail,
   Lock,
   Eye,
@@ -86,58 +86,102 @@ export function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 bg-[#080D18] text-slate-100 overflow-hidden selection:bg-emerald-500/30 font-sans">
+    <div className="relative min-h-screen w-full flex flex-col items-center justify-between p-4 sm:p-8 bg-[#061019] text-slate-100 overflow-hidden selection:bg-emerald-500/30 font-sans">
       {/* ── Background Subtle Glows ── */}
-      <div className="absolute -top-32 -left-32 w-80 h-80 bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-0 left-0 w-96 h-96 bg-[#0f3d38]/20 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#0b3839]/25 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-[#0d2836]/15 rounded-full blur-[160px] pointer-events-none" />
 
-      {/* ── Background ECG Pulse Wave (Clean SVG, No Text) ── */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-25">
+      {/* ── Glowing ECG Pulse Wave Across the Background ── */}
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-80 z-0">
         <svg
-          viewBox="0 0 1400 300"
-          className="w-full h-auto text-emerald-400 stroke-current fill-none stroke-[2]"
+          viewBox="0 0 1600 300"
+          className="w-full h-48 sm:h-64"
           preserveAspectRatio="none"
         >
-          <path d="M 0 150 L 350 150 L 370 125 L 390 175 L 410 80 L 440 220 L 465 130 L 485 155 L 510 150 L 890 150 L 910 125 L 930 175 L 950 80 L 980 220 L 1005 130 L 1025 155 L 1050 150 L 1400 150" />
+          <defs>
+            <filter id="ecgGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          {/* Left waveform */}
+          <path
+            d="M 0 150 L 150 150 L 180 150 L 195 138 L 210 150 L 235 150 L 245 160 L 260 70 L 280 230 L 295 135 L 310 150 L 335 150 L 350 135 L 375 150 L 520 150"
+            fill="none"
+            stroke="#2DD4BF"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="url(#ecgGlow)"
+          />
+          {/* Right waveform */}
+          <path
+            d="M 1080 150 L 1225 150 L 1240 135 L 1265 150 L 1290 150 L 1300 160 L 1315 70 L 1335 230 L 1350 135 L 1365 150 L 1390 150 L 1405 135 L 1430 150 L 1600 150"
+            fill="none"
+            stroke="#2DD4BF"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="url(#ecgGlow)"
+          />
         </svg>
       </div>
 
+      {/* ── Top Spacer (for vertical balance) ── */}
+      <div className="w-full h-2 sm:h-4" />
+
       {/* ── Main Centered Stack ── */}
-      <div className="relative w-full max-w-sm sm:max-w-md z-10 flex flex-col items-center space-y-6">
+      <div className="relative w-full max-w-sm sm:max-w-md z-10 flex flex-col items-center space-y-6 my-auto">
         
         {/* 1. BRAND LOGO & TAGLINE */}
-        <div className="text-center space-y-2">
-          {/* Pulse Icon */}
-          <div className="mx-auto flex h-13 w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 shadow-lg shadow-emerald-950/40 p-3">
-            <HeartPulse className="h-7 w-7 text-emerald-400 animate-pulse" />
+        <div className="text-center flex flex-col items-center space-y-2.5">
+          {/* Heart with Pulse Icon */}
+          <div className="relative flex items-center justify-center">
+            <svg
+              className="w-16 h-16 text-[#2DD4BF] drop-shadow-[0_0_16px_rgba(45,212,191,0.6)]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572" />
+              <path d="M7 12.5h2.5l1.5 -3l2 6l1.5 -3h2.5" />
+            </svg>
           </div>
 
           {/* Title */}
-          <div>
-            <div className="flex items-center justify-center space-x-2">
-              <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                CAREPULSE
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold border border-emerald-500/30">
-                1.0
-              </span>
-            </div>
-            {/* Tagline */}
-            <p className="text-xs sm:text-sm font-medium text-emerald-400/90 tracking-wide mt-1">
-              Smarter Monitoring. Earlier Awareness. Safer Recovery.
-            </p>
+          <div className="flex items-center justify-center">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+              CarePulse
+            </h1>
           </div>
+
+          {/* Tagline */}
+          <p className="text-xs sm:text-sm font-medium text-[#2DD4BF] tracking-wide">
+            Smarter Monitoring. Earlier Awareness. Safer Recovery.
+          </p>
         </div>
 
         {/* 2. SIMPLE, CLEAN LOGIN CARD */}
-        <div className="w-full rounded-2xl border border-[#1e293b] bg-[#0f172a]/95 p-6 sm:p-8 shadow-2xl shadow-black/80 backdrop-blur-xl">
+        <div className="w-full rounded-[24px] border border-[#1b2f42] bg-[#0c1825]/95 p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-xl">
           {!isForgotMode ? (
             <div className="space-y-5">
               {/* Card Title */}
-              <div className="text-center">
-                <h2 className="text-base font-bold text-white">Hospital Staff Login</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Sign in to access your monitoring dashboard
+              <div className="text-center space-y-1">
+                <div className="flex items-center justify-center space-x-2">
+                  <Hospital className="h-5 w-5 text-[#2DD4BF]" />
+                  <h2 className="text-lg font-bold text-white tracking-tight">
+                    Hospital Staff Login
+                  </h2>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Secure access to the patient monitoring platform
                 </p>
               </div>
 
@@ -152,71 +196,61 @@ export function LoginPage() {
               {/* Login Form */}
               <form onSubmit={handleSubmit} className="space-y-4 text-left">
                 {/* Hospital Email */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-300">
-                    Hospital Email
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Mail className="h-4 w-4" />
-                    </div>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (formValidationMsg) setFormValidationMsg(null);
-                      }}
-                      placeholder="Enter your hospital email"
-                      required
-                      autoComplete="email"
-                      className="w-full rounded-xl border border-[#26334d] bg-[#090e17] pl-10 pr-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
-                    />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Mail className="h-4 w-4" />
                   </div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (formValidationMsg) setFormValidationMsg(null);
+                    }}
+                    placeholder="Hospital Email"
+                    required
+                    autoComplete="email"
+                    className="w-full rounded-xl border border-[#1d2f42] bg-[#08101a] pl-10 pr-3.5 py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-400 focus:border-[#2DD4BF] focus:outline-none focus:ring-1 focus:ring-[#2DD4BF] transition-colors"
+                  />
                 </div>
 
                 {/* Password */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-300">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Lock className="h-4 w-4" />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        if (formValidationMsg) setFormValidationMsg(null);
-                      }}
-                      placeholder="Enter your password"
-                      required
-                      autoComplete="current-password"
-                      className="w-full rounded-xl border border-[#26334d] bg-[#090e17] pl-10 pr-10 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition-colors"
-                      title={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Lock className="h-4 w-4" />
                   </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (formValidationMsg) setFormValidationMsg(null);
+                    }}
+                    placeholder="Password"
+                    required
+                    autoComplete="current-password"
+                    className="w-full rounded-xl border border-[#1d2f42] bg-[#08101a] pl-10 pr-10 py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-400 focus:border-[#2DD4BF] focus:outline-none focus:ring-1 focus:ring-[#2DD4BF] transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition-colors"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
 
                 {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <label className="flex items-center space-x-2 cursor-pointer select-none text-slate-400 hover:text-slate-200">
+                <div className="flex items-center justify-between text-xs pt-0.5">
+                  <label className="flex items-center space-x-2 cursor-pointer select-none text-slate-300 hover:text-white">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-[#26334d] bg-[#090e17] text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
+                      className="h-3.5 w-3.5 rounded border-[#1d2f42] bg-[#08101a] text-[#00C48C] focus:ring-0 cursor-pointer accent-[#00C48C]"
                     />
-                    <span>Remember Me</span>
+                    <span className="font-medium">Remember Me</span>
                   </label>
 
                   <button
@@ -227,7 +261,7 @@ export function LoginPage() {
                       setResetEmail(email);
                       setIsForgotMode(true);
                     }}
-                    className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                    className="text-[#2DD4BF] hover:text-[#5eead4] font-medium transition-colors"
                   >
                     Forgot Password?
                   </button>
@@ -237,7 +271,7 @@ export function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-2 py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-950/40 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
+                  className="w-full mt-2 py-3 px-4 rounded-xl bg-[#00C48C] hover:bg-[#00D69A] text-slate-950 font-bold text-sm shadow-lg shadow-[#00C48C]/20 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   {loading ? (
                     <>
@@ -254,9 +288,9 @@ export function LoginPage() {
               </form>
 
               {/* Authorized Hospital Staff Only */}
-              <div className="pt-2 text-center border-t border-[#1e293b]">
-                <div className="inline-flex items-center space-x-1.5 text-xs text-slate-400">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
+              <div className="pt-2 text-center">
+                <div className="inline-flex items-center space-x-1.5 text-xs text-slate-300 font-medium">
+                  <ShieldCheck className="h-4 w-4 text-[#2DD4BF]" />
                   <span>Authorized Hospital Staff Only</span>
                 </div>
               </div>
@@ -304,39 +338,34 @@ export function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setIsForgotMode(false)}
-                    className="mt-2 w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs"
+                    className="mt-2 w-full py-2.5 rounded-xl bg-[#00C48C] hover:bg-[#00D69A] text-slate-950 font-bold text-xs"
                   >
                     Return to Sign In
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleResetPassword} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-slate-300">
-                      Hospital Email
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Mail className="h-4 w-4" />
-                      </div>
-                      <input
-                        type="email"
-                        value={resetEmail}
-                        onChange={(e) => {
-                          setResetEmail(e.target.value);
-                          if (formValidationMsg) setFormValidationMsg(null);
-                        }}
-                        placeholder="Enter your hospital email"
-                        required
-                        className="w-full rounded-xl border border-[#26334d] bg-[#090e17] pl-10 pr-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Mail className="h-4 w-4" />
                     </div>
+                    <input
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => {
+                        setResetEmail(e.target.value);
+                        if (formValidationMsg) setFormValidationMsg(null);
+                      }}
+                      placeholder="Hospital Email"
+                      required
+                      className="w-full rounded-xl border border-[#1d2f42] bg-[#08101a] pl-10 pr-3.5 py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-400 focus:border-[#2DD4BF] focus:outline-none focus:ring-1 focus:ring-[#2DD4BF]"
+                    />
                   </div>
 
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs shadow-lg disabled:opacity-60 transition-all flex items-center justify-center space-x-2"
+                    className="w-full py-3 px-4 rounded-xl bg-[#00C48C] hover:bg-[#00D69A] text-slate-950 font-bold text-xs shadow-lg disabled:opacity-60 transition-all flex items-center justify-center space-x-2"
                   >
                     {resetLoading ? (
                       <>
@@ -353,11 +382,16 @@ export function LoginPage() {
           )}
         </div>
 
-        {/* 3. SIMPLE FOOTER */}
-        <div className="text-center text-xs text-slate-500">
-          © 2026 CAREPULSE. All rights reserved.
-        </div>
+        {/* ── Sub-card Spacer ── */}
+        <div />
       </div>
+
+      {/* 3. FOOTER */}
+      <footer className="w-full py-4 text-center z-10">
+        <p className="text-xs text-slate-400 font-medium">
+          © 2026 CarePulse. All rights reserved.
+        </p>
+      </footer>
     </div>
   );
 }

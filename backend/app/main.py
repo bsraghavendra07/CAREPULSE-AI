@@ -1,4 +1,4 @@
-"""MINEARENA 1.0 — Main FastAPI application entry point."""
+"""CarePulse — Main FastAPI application entry point."""
 
 from __future__ import annotations
 
@@ -94,7 +94,7 @@ def _load_synthea_profiles() -> dict[str, dict[str, Any]]:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Startup and shutdown lifecycle."""
-    logger.info("Starting MINEARENA 1.0 backend...")
+    logger.info("Starting CarePulse backend...")
 
     patients = _load_synthea_profiles()
 
@@ -127,7 +127,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="CarePulse AI — Personalized Post-Discharge Deterioration Monitor",
+    title="CarePulse — Personalized Post-Discharge Deterioration Monitor",
     description="Real-time multi-patient clinical deterioration monitoring using NEWS2 and individualized anomaly detection.",
     version="1.0.0",
     lifespan=lifespan,
@@ -162,6 +162,37 @@ async def set_simulation_speed(body: SpeedUpdate) -> dict[str, Any]:
     return {"speed_factor": factor}
 
 
+@app.post("/api/simulation/pause")
+async def pause_simulation() -> dict[str, Any]:
+    """Pause background telemetry generation."""
+    telemetry_manager.pause()
+    return {"status": "paused", "is_paused": True}
+
+
+@app.post("/api/simulation/resume")
+async def resume_simulation() -> dict[str, Any]:
+    """Resume background telemetry generation."""
+    telemetry_manager.resume()
+    return {"status": "running", "is_paused": False}
+
+
+@app.post("/api/simulation/reset")
+async def reset_simulation() -> dict[str, Any]:
+    """Reset all active scenarios, events, and replayers."""
+    telemetry_manager.reset_simulation()
+    return {"status": "reset", "is_paused": telemetry_manager.is_paused}
+
+
+@app.get("/api/simulation/state")
+async def get_simulation_state() -> dict[str, Any]:
+    """Get current simulation state."""
+    return {
+        "is_paused": telemetry_manager.is_paused,
+        "speed_factor": telemetry_manager.speed_factor,
+        "tick_number": telemetry_manager.tick_number,
+    }
+
+
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry_endpoint(websocket: WebSocket) -> None:
     """Real-time streaming WebSocket endpoint for client dashboards."""
@@ -181,7 +212,7 @@ async def websocket_telemetry_endpoint(websocket: WebSocket) -> None:
 @app.get("/")
 async def root() -> dict[str, str]:
     return {
-        "system": "CarePulse AI Deterioration Monitor",
+        "system": "CarePulse Deterioration Monitor",
         "status": "operational",
         "version": "1.0.0",
     }

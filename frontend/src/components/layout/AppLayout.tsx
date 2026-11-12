@@ -17,6 +17,7 @@ import {
   LogOut,
   ChevronRight,
   X,
+  Radio,
 } from 'lucide-react';
 import { News2ScorePanel } from '../patient-detail/News2ScorePanel';
 import { PersonalizedPanel } from '../patient-detail/PersonalizedPanel';
@@ -87,8 +88,7 @@ export function AppLayout({
             </div>
             <div>
               <div className="text-base font-extrabold tracking-tight text-white flex items-center space-x-1.5">
-                <span className="bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">CAREPULSE</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold border border-emerald-500/30">1.0</span>
+                <span className="bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">CarePulse</span>
               </div>
               <div className="text-[10px] text-emerald-400/80 font-medium tracking-tight">Smarter Monitoring. Earlier Awareness.</div>
             </div>
@@ -152,6 +152,16 @@ export function AppLayout({
               </div>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-purple-600 text-white">
                 6
+              </span>
+            </NavLink>
+
+            <NavLink to="/simulation-events" className={navLinkClass}>
+              <div className="flex items-center space-x-2.5">
+                <Radio className="h-4 w-4 text-[#00C48C]" />
+                <span>Simulation Events</span>
+              </div>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-[#00C48C]/20 text-[#00C48C] border border-[#00C48C]/30">
+                5
               </span>
             </NavLink>
           </div>
@@ -264,12 +274,12 @@ export function AppLayout({
         {/* Global Footer & Branding */}
         <footer className="pt-6 pb-2 border-t border-[#1a1f2c] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
           <div className="flex items-center space-x-2">
-            <span className="font-bold text-slate-300">CAREPULSE 1.0</span>
+            <span className="font-bold text-slate-300">CarePulse</span>
             <span>•</span>
             <span className="text-slate-400 italic">"Smarter Monitoring. Earlier Awareness. Safer Recovery."</span>
           </div>
           <div className="text-[11px] text-slate-500">
-            © 2026 CAREPULSE Health Systems. All rights reserved.
+            © 2026 CarePulse Health Systems. All rights reserved.
           </div>
         </footer>
       </main>

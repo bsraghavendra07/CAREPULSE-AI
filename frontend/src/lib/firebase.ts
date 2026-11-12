@@ -1,5 +1,5 @@
 /**
- * CAREPULSE 1.0 — Firebase Client Configuration & Authentication Service.
+ * CarePulse — Firebase Client Configuration & Authentication Service.
  *
  * Configures Firebase Authentication for Email/Password clinical login,
  * persistent sessions, password reset, and ID token retrieval for backend verification.

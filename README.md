@@ -1,4 +1,4 @@
-# CAREPULSE 1.0 — Personalized Post-Discharge Deterioration Monitor
+# CarePulse — Personalized Post-Discharge Deterioration Monitor
 > **"Smarter Monitoring. Earlier Awareness. Safer Recovery."**
 
 A real-time remote patient deterioration monitoring system designed for post-discharge recovery. It combines continuous physiological telemetry with the official **Royal College of Physicians (RCP) NEWS2** standard, **individualized statistical baseline anomaly detection**, **asymmetric signal artifact rejection**, and **Clinical Decision Support (CDS) for Specialist Review**.

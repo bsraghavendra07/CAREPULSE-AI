@@ -1,4 +1,4 @@
-export type DataSource = 'BIDMC' | 'SIMULATED';
+export type DataSource = 'BIDMC' | 'SIMULATED' | 'DROPOUT' | 'FHIR_INGEST';
 export type SQIStatus = 'HIGH' | 'MEDIUM' | 'LOW';
 export type RiskLevel = 'LOW' | 'LOW_MEDIUM' | 'MEDIUM' | 'HIGH';
 export type ScaleUsed = 'SCALE_1' | 'SCALE_2';
@@ -17,8 +17,9 @@ export interface SuggestedSpecialty {
 }
 
 export interface VitalValue {
-  value: number | string | boolean;
+  value: number | string | boolean | null;
   source: DataSource;
+  status?: string;
 }
 
 export interface Vitals {
@@ -29,6 +30,7 @@ export interface Vitals {
   body_temperature: VitalValue;
   consciousness: VitalValue;
   supplemental_oxygen: VitalValue;
+  [key: string]: VitalValue | any;
 }
 
 export interface SignalQuality {
@@ -62,6 +64,15 @@ export interface PersonalizedInsight {
   advisory_note: string;
 }
 
+export interface ActiveSimulationEvent {
+  event_type: string;
+  status: string;
+  elapsed_ticks: number;
+  duration_ticks: number;
+  progress_pct: number;
+  params: Record<string, any>;
+}
+
 export interface TelemetryTick {
   timestamp: string;
   patient_id: string;
@@ -72,6 +83,8 @@ export interface TelemetryTick {
   personalized: PersonalizedInsight;
   suggested_specialty?: SuggestedSpecialty;
   fhir_observation_id: string;
+  probe_removed?: boolean;
+  active_simulation_event?: ActiveSimulationEvent | null;
 }
 
 export interface PerformanceReport {

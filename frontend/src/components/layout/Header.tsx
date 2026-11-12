@@ -29,7 +29,7 @@ export function Header({ connected, speedFactor = 1 }: HeaderProps) {
         <div>
           <div className="flex items-center space-x-2">
             <h1 className="text-base font-bold tracking-tight text-foreground sm:text-lg">
-              CAREPULSE 1.0
+              CarePulse
             </h1>
             <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-widest text-emerald-400 border-emerald-500/30">
               CLINICAL CDS

@@ -81,6 +81,32 @@ class TelemetryManager:
         self.detection_latency: dict[str, int | None] = {}
 
         self._running = False
+        self._paused: bool = False
+
+    def pause(self) -> None:
+        """Pause telemetry streaming."""
+        self._paused = True
+
+    def resume(self) -> None:
+        """Resume telemetry streaming."""
+        self._paused = False
+
+    @property
+    def is_paused(self) -> bool:
+        return self._paused
+
+    def reset_simulation(self) -> None:
+        """Reset all active scenarios, events, and replayers."""
+        self.scenario_engine._active.clear()
+        self.scenario_engine._custom_events.clear()
+        self._prev_vitals = {pid: None for pid in self._patients}
+        for replayer in self._replayers.values():
+            replayer.reset()
+        for pid, replayer in self._replayers.items():
+            self._replay_iters[pid] = replayer.replay(self.speed_factor)
+        self.scenario_events.clear()
+        self.scenario_start_ticks.clear()
+        self.detection_latency.clear()
 
     # ------------------------------------------------------------------
     # Engine initialisation (called from main.py startup)
@@ -141,6 +167,10 @@ class TelemetryManager:
             self._replay_iters[pid] = replayer.replay(self.speed_factor)
 
         while self._running:
+            if self._paused:
+                await asyncio.sleep(0.5)
+                continue
+
             self.tick_number += 1
 
             for pid, profile in self._patients.items():
@@ -247,6 +277,7 @@ class TelemetryManager:
                         obs_id = stored_id
 
                 # 8. Build broadcast payload
+                custom_status = self.scenario_engine.get_custom_event_status(pid, self.tick_number)
                 payload: dict[str, Any] = {
                     "timestamp": now_iso,
                     "patient_id": pid,
@@ -259,6 +290,8 @@ class TelemetryManager:
                         "motion_injected": sqi_result.motion_injected,
                         "note": sqi_result.note,
                     },
+                    "probe_removed": bool(vitals.get("probe_removed", False)),
+                    "active_simulation_event": custom_status,
                     "news2": _news2_to_dict(news2_result),
                     "suggested_specialty": specialty_result.model_dump(),
                     "personalized": _pers_to_dict(pers_result),
@@ -352,20 +385,50 @@ class TelemetryManager:
 
 def _extract_value(vitals: dict[str, Any], key: str) -> Any:
     """Extract scalar value whether vitals[key] is ``{value:…}`` or raw."""
+    alias_map = {
+        "heart_rate": "hr",
+        "oxygen_saturation": "spo2",
+        "respiratory_rate": "rr",
+        "systolic_bp": "sbp",
+        "body_temperature": "temp",
+        "hr": "heart_rate",
+        "spo2": "oxygen_saturation",
+        "rr": "respiratory_rate",
+        "sbp": "systolic_bp",
+        "temp": "body_temperature",
+    }
     v = vitals.get(key)
+    if v is None and key in alias_map:
+        v = vitals.get(alias_map[key])
     if isinstance(v, dict):
         return v.get("value")
     return v
 
 
 def _extract_source(vitals: dict[str, Any], key: str) -> str:
+    alias_map = {
+        "heart_rate": "hr",
+        "oxygen_saturation": "spo2",
+        "respiratory_rate": "rr",
+        "systolic_bp": "sbp",
+        "body_temperature": "temp",
+    }
     v = vitals.get(key)
+    if v is None and key in alias_map:
+        v = vitals.get(alias_map[key])
     if isinstance(v, dict):
         return v.get("source", "SIMULATED")
     return "SIMULATED"
 
 
 def _build_vitals_payload(vitals: dict[str, Any]) -> dict[str, Any]:
+    alias_map = {
+        "heart_rate": "hr",
+        "oxygen_saturation": "spo2",
+        "respiratory_rate": "rr",
+        "systolic_bp": "sbp",
+        "body_temperature": "temp",
+    }
     keys = [
         "heart_rate",
         "oxygen_saturation",
@@ -378,10 +441,16 @@ def _build_vitals_payload(vitals: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k in keys:
         v = vitals.get(k)
+        if v is None and k in alias_map:
+            v = vitals.get(alias_map[k])
         if isinstance(v, dict):
-            out[k] = {"value": v.get("value"), "source": v.get("source", "SIMULATED")}
+            out[k] = {
+                "value": v.get("value"),
+                "source": v.get("source", "SIMULATED"),
+                "status": v.get("status", "NORMAL"),
+            }
         else:
-            out[k] = {"value": v, "source": "SIMULATED"}
+            out[k] = {"value": v, "source": "SIMULATED", "status": "NORMAL"}
     return out
 
 

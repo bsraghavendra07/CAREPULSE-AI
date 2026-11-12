@@ -15,6 +15,7 @@ import { VitalsMonitorPage } from './pages/VitalsMonitorPage';
 import { FhirPage } from './pages/FhirPage';
 import { PerformanceReportPage } from './pages/PerformanceReportPage';
 import { DeteriorationTestsPage } from './pages/DeteriorationTestsPage';
+import { SimulationEventsPage } from './pages/SimulationEventsPage';
 import { Activity } from 'lucide-react';
 
 interface AuthenticatedRoutesProps {
@@ -49,7 +50,7 @@ function AuthenticatedRoutes({
             <Activity className="h-6 w-6 text-emerald-400 animate-pulse" />
           </div>
           <div className="text-xs font-semibold text-slate-300 tracking-wide">
-            Authenticating CAREPULSE Session...
+            Authenticating CarePulse Session...
           </div>
         </div>
       </div>
@@ -146,6 +147,24 @@ function AuthenticatedRoutes({
               onSelectPatient={(p) => setSelectedPatientModal(p)}
             />
           }
+        />
+
+        {/* 7. SIMULATION EVENTS (PS 3.2 Wearable Simulator) */}
+        <Route
+          path="/simulation-events"
+          element={
+            <SimulationEventsPage
+              patients={patientList}
+              latestTicks={latestTicks}
+              speedFactor={speedFactor}
+              onSpeedChange={handleSpeedChange}
+              onSelectPatient={(p) => setSelectedPatientModal(p)}
+            />
+          }
+        />
+        <Route
+          path="/wearable"
+          element={<Navigate to="/simulation-events" replace />}
         />
 
         {/* Catch-all */}
