@@ -307,6 +307,35 @@ async def run_final_validation():
                 "device_note": probe_eval.note,
             }
 
+            # Suggested Specialty for Review (Clinical Decision Support)
+            from app.core.specialty_recommender import recommend_specialty
+            spec_resp = recommend_specialty(calculate_news2({"hr": 75, "spo2": 88, "rr": 16, "sbp": 120, "temp": 37.0}, False, False), {"hr": 75, "spo2": 88, "rr": 16, "sbp": 120, "temp": 37.0}, "HIGH")
+            spec_card = recommend_specialty(calculate_news2({"hr": 135, "spo2": 98, "rr": 16, "sbp": 120, "temp": 37.0}, False, False), {"hr": 135, "spo2": 98, "rr": 16, "sbp": 120, "temp": 37.0}, "HIGH")
+            spec_temp = recommend_specialty(calculate_news2({"hr": 75, "spo2": 98, "rr": 16, "sbp": 120, "temp": 39.4}, False, False), {"hr": 75, "spo2": 98, "rr": 16, "sbp": 120, "temp": 39.4}, "HIGH")
+            spec_multi = recommend_specialty(calculate_news2({"hr": 128, "spo2": 95, "rr": 28, "sbp": 88, "temp": 39.4}, False, False), {"hr": 128, "spo2": 95, "rr": 28, "sbp": 88, "temp": 39.4}, "HIGH")
+            spec_norm = recommend_specialty(calculate_news2({"hr": 72, "spo2": 98, "rr": 15, "sbp": 120, "temp": 36.8}, False, False), {"hr": 72, "spo2": 98, "rr": 15, "sbp": 120, "temp": 36.8}, "HIGH")
+            spec_artifact = recommend_specialty(calculate_news2({"hr": 0, "spo2": 0, "rr": 0, "sbp": 0, "temp": 36.8}, False, False), {"hr": 0, "spo2": 0, "rr": 0, "sbp": 0, "temp": 36.8}, "LOW")
+
+            c5_spec = (
+                spec_resp.suggested_specialty == "Pulmonology" and
+                spec_card.suggested_specialty == "Cardiology" and
+                spec_temp.suggested_specialty == "Internal Medicine" and
+                spec_multi.suggested_specialty == "General Medicine" and
+                spec_norm.is_applicable is False and
+                spec_artifact.is_applicable is False
+            )
+            total_checks += 1
+            if c5_spec: passed_checks += 1
+            p5_res["suggested_specialty_clinical_decision_support"] = {
+                "pass": c5_spec,
+                "resp_specialty": spec_resp.suggested_specialty,
+                "cardiac_specialty": spec_card.suggested_specialty,
+                "internal_med_specialty": spec_temp.suggested_specialty,
+                "multi_vital_specialty": spec_multi.suggested_specialty,
+                "normal_suppressed": not spec_norm.is_applicable,
+                "artifact_suppressed": not spec_artifact.is_applicable,
+            }
+
             VALIDATION_DATA["phases"]["phase5_alert_management"] = p5_res
             print(f"Phase 5 complete: {sum(1 for v in p5_res.values() if v.get('pass'))}/{len(p5_res)} passed")
 

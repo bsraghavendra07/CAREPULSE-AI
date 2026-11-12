@@ -280,6 +280,10 @@ export function AppLayout({
               <News2ScorePanel
                 news2={latestTicks[selectedPatientModal.id]?.news2}
                 sqiStatus={latestTicks[selectedPatientModal.id]?.signal_quality?.status}
+                suggestedSpecialty={
+                  latestTicks[selectedPatientModal.id]?.suggested_specialty ||
+                  latestTicks[selectedPatientModal.id]?.news2?.suggested_specialty
+                }
               />
               <PersonalizedPanel
                 personalized={latestTicks[selectedPatientModal.id]?.personalized}

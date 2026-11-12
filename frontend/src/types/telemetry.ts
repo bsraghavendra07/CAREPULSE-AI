@@ -5,6 +5,17 @@ export type ScaleUsed = 'SCALE_1' | 'SCALE_2';
 
 export type TriageTier = 'ROUTINE' | 'WATCH' | 'REVIEW' | 'URGENT';
 
+export type SuggestedSpecialtyName = 'Pulmonology' | 'Cardiology' | 'Internal Medicine' | 'General Medicine';
+
+export interface SuggestedSpecialty {
+  alert_id?: string;
+  triggering_pattern: string | null;
+  suggested_specialty: SuggestedSpecialtyName | null;
+  reason: string | null;
+  decision_support_only: boolean;
+  is_applicable: boolean;
+}
+
 export interface VitalValue {
   value: number | string | boolean;
   source: DataSource;
@@ -40,6 +51,7 @@ export interface NEWS2Score {
   triage_tier?: TriageTier;
   alert_reason?: string;
   clinical_action?: string;
+  suggested_specialty?: SuggestedSpecialty;
 }
 
 export interface PersonalizedInsight {
@@ -58,6 +70,7 @@ export interface TelemetryTick {
   signal_quality: SignalQuality;
   news2: NEWS2Score;
   personalized: PersonalizedInsight;
+  suggested_specialty?: SuggestedSpecialty;
   fhir_observation_id: string;
 }
 

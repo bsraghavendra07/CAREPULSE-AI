@@ -13,6 +13,7 @@ from fastapi import WebSocket
 from app.config import WS_TICK_INTERVAL_BASE
 from app.core.artifact_detector import ArtifactDetector, SQIResult
 from app.core.news2 import NEWS2Result, calculate_news2
+from app.core.specialty_recommender import recommend_specialty, SuggestedSpecialtyResult
 from app.core.personalized import PersonalizedEngine, PersonalizedResult
 from app.fhir.local_store import LocalFHIRStore
 from app.fhir.mapper import create_observation, _UNITS
@@ -222,6 +223,15 @@ class TelemetryManager:
                     self.personalized_advisories += 1
                     pc["personalized_advisories"] += 1
 
+                # 6.5 Suggested Specialty for Review (Clinical Decision Support)
+                specialty_result = recommend_specialty(
+                    news2_result=news2_result,
+                    vitals=news2_input,
+                    sqi_status=sqi_result.status,
+                    patient_id=pid,
+                    alert_id=f"alert-{pid}-{self.tick_number}",
+                )
+
                 # 7. FHIR Observation (store locally)
                 now_iso = datetime.now(timezone.utc).isoformat()
                 obs_id: str | None = None
@@ -250,6 +260,7 @@ class TelemetryManager:
                         "note": sqi_result.note,
                     },
                     "news2": _news2_to_dict(news2_result),
+                    "suggested_specialty": specialty_result.model_dump(),
                     "personalized": _pers_to_dict(pers_result),
                     "fhir_observation_id": obs_id,
                 }
@@ -390,6 +401,7 @@ def _news2_to_dict(r: NEWS2Result) -> dict[str, Any]:
             "triage_tier": getattr(r, "triage_tier", "ROUTINE"),
             "alert_reason": getattr(r, "alert_reason", ""),
             "clinical_action": getattr(r, "clinical_action", ""),
+            "suggested_specialty": getattr(r, "suggested_specialty", None),
         }
 
 

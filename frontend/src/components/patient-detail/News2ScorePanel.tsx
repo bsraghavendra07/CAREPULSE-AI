@@ -1,16 +1,18 @@
 import React from 'react';
-import { NEWS2Score } from '../../types/telemetry';
+import { NEWS2Score, SuggestedSpecialty } from '../../types/telemetry';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { AlertCircle, ShieldAlert, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { SuggestedSpecialtyCard } from './SuggestedSpecialtyCard';
 
 interface News2ScorePanelProps {
   news2?: NEWS2Score;
   sqiStatus?: string;
+  suggestedSpecialty?: SuggestedSpecialty;
 }
 
-export function News2ScorePanel({ news2, sqiStatus }: News2ScorePanelProps) {
+export function News2ScorePanel({ news2, sqiStatus, suggestedSpecialty }: News2ScorePanelProps) {
   if (!news2) {
     return (
       <Card>
@@ -154,6 +156,13 @@ export function News2ScorePanel({ news2, sqiStatus }: News2ScorePanelProps) {
             </div>
           </div>
         )}
+
+        {/* Clinical Decision Support: Suggested Specialty for Review */}
+        <SuggestedSpecialtyCard
+          specialty={suggestedSpecialty || news2.suggested_specialty}
+          triageTier={news2.triage_tier}
+          sqiStatus={sqiStatus}
+        />
 
         {/* Detailed Sub-Score Breakdown Table */}
         <div className="rounded-lg border border-border overflow-hidden">
