@@ -104,7 +104,8 @@ def process_telemetry_reading(
     respiratory_rate: Optional[float],
     body_temperature: Optional[float],
     supplemental_oxygen: bool = False,
-    source_tag: str = "WEARABLE"
+    source_tag: str = "WEARABLE",
+    already_stored_obs: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """
     Core Intelligence Pipeline:
@@ -117,24 +118,25 @@ def process_telemetry_reading(
     """
     now_iso = datetime.now(timezone.utc).isoformat()
 
-    # 1. Store FHIR R4 Observations
-    obs_list = []
-    if heart_rate is not None:
-        obs_hr = create_fhir_observation(patient_id, LOINC_HEART_RATE, heart_rate, now_iso)
-        fhir_store.save_observation(obs_hr)
-        obs_list.append(obs_hr)
-    if spo2 is not None:
-        obs_spo2 = create_fhir_observation(patient_id, LOINC_SPO2, spo2, now_iso)
-        fhir_store.save_observation(obs_spo2)
-        obs_list.append(obs_spo2)
-    if respiratory_rate is not None:
-        obs_rr = create_fhir_observation(patient_id, LOINC_RESPIRATORY_RATE, respiratory_rate, now_iso)
-        fhir_store.save_observation(obs_rr)
-        obs_list.append(obs_rr)
-    if body_temperature is not None:
-        obs_temp = create_fhir_observation(patient_id, LOINC_BODY_TEMPERATURE, body_temperature, now_iso)
-        fhir_store.save_observation(obs_temp)
-        obs_list.append(obs_temp)
+    # 1. Store FHIR R4 Observations (if not already stored by FHIR endpoint)
+    obs_list = already_stored_obs if already_stored_obs is not None else []
+    if already_stored_obs is None:
+        if heart_rate is not None:
+            obs_hr = create_fhir_observation(patient_id, LOINC_HEART_RATE, heart_rate, now_iso)
+            fhir_store.save_observation(obs_hr)
+            obs_list.append(obs_hr)
+        if spo2 is not None:
+            obs_spo2 = create_fhir_observation(patient_id, LOINC_SPO2, spo2, now_iso)
+            fhir_store.save_observation(obs_spo2)
+            obs_list.append(obs_spo2)
+        if respiratory_rate is not None:
+            obs_rr = create_fhir_observation(patient_id, LOINC_RESPIRATORY_RATE, respiratory_rate, now_iso)
+            fhir_store.save_observation(obs_rr)
+            obs_list.append(obs_rr)
+        if body_temperature is not None:
+            obs_temp = create_fhir_observation(patient_id, LOINC_BODY_TEMPERATURE, body_temperature, now_iso)
+            fhir_store.save_observation(obs_temp)
+            obs_list.append(obs_temp)
 
     current_vitals = {
         "heart_rate": heart_rate,
@@ -318,17 +320,26 @@ async def ingest_fhir_bundle(bundle: Dict[str, Any]):
     for entry in entries:
         res = entry.get("resource", {})
         if res.get("resourceType") == "Observation":
-            fhir_store.save_observation(res, sync_hapi=True)
+            saved_obs = fhir_store.save_observation(res, sync_hapi=True)
             processed_count += 1
             
             subj_ref = res.get("subject", {}).get("reference", "Patient/P-001")
             p_id = subj_ref.replace("Patient/", "").strip()
             if p_id not in patient_vitals_agg:
-                patient_vitals_agg[p_id] = {"hr": None, "spo2": None, "rr": None, "temp": None}
+                tags = res.get("meta", {}).get("tag", [])
+                src_code = tags[0].get("code") if tags else "FHIR_R4_BUNDLE"
+                patient_vitals_agg[p_id] = {
+                    "hr": None, "spo2": None, "rr": None, "temp": None,
+                    "source_tag": src_code,
+                    "stored_obs": []
+                }
+            
+            patient_vitals_agg[p_id]["stored_obs"].append(saved_obs)
                 
             codings = res.get("code", {}).get("coding", [])
             code = codings[0].get("code") if codings else None
-            val = res.get("valueQuantity", {}).get("value")
+            val_quant = res.get("valueQuantity")
+            val = val_quant.get("value") if val_quant else None
             if val is not None:
                 val = float(val)
                 if code == LOINC_HEART_RATE:
@@ -344,7 +355,13 @@ async def ingest_fhir_bundle(bundle: Dict[str, Any]):
     last_result = None
     for p_id, v in patient_vitals_agg.items():
         last_result = process_telemetry_reading(
-            p_id, v["hr"], v["spo2"], v["rr"], v["temp"], source_tag="FHIR_R4_BUNDLE"
+            p_id, 
+            v["hr"], 
+            v["spo2"], 
+            v["rr"], 
+            v["temp"], 
+            source_tag=v["source_tag"],
+            already_stored_obs=v["stored_obs"]
         )
         await ws_manager.broadcast({"type": "VITAL_UPDATE", "data": last_result})
 
@@ -477,6 +494,37 @@ async def ingest_vitals_payload(payload: VitalSignsIngestPayload):
     return result
 
 
+@app.get("/api/simulator/state")
+def get_simulator_state():
+    """Returns the current runtime state of the Virtual Wearable Simulator."""
+    return virtual_wearable_simulator.get_state()
+
+
+class SimulatorControlRequest(BaseModel):
+    action: str  # "start" | "pause" | "resume" | "stop" | "step"
+    patient_id: Optional[str] = None
+    interval_seconds: Optional[float] = None
+
+
+@app.post("/api/simulator/control")
+async def control_virtual_simulator(body: SimulatorControlRequest):
+    """Controls the Virtual Wearable Simulator (start, pause, resume, stop, step)."""
+    action = body.action.lower()
+    if action == "start":
+        state = virtual_wearable_simulator.start(body.patient_id, body.interval_seconds)
+    elif action == "pause":
+        state = virtual_wearable_simulator.pause()
+    elif action == "resume":
+        state = virtual_wearable_simulator.resume()
+    elif action == "stop":
+        state = virtual_wearable_simulator.stop()
+    elif action == "step":
+        return await get_simulator_tick(body.patient_id or virtual_wearable_simulator.active_patient_id)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown simulator action '{body.action}'")
+    return {"status": "SUCCESS", "action": action, "state": state}
+
+
 @app.post("/api/simulator/event")
 async def set_simulator_event(body: Dict[str, Any] = Body(...)):
     """
@@ -490,37 +538,97 @@ async def set_simulator_event(body: Dict[str, Any] = Body(...)):
 
 
 @app.get("/api/simulator/next")
-async def get_simulator_tick(patient_id: str = "P-003"):
-    """Generates next telemetry reading from the Virtual Wearable Simulator."""
-    reading = virtual_wearable_simulator.generate_reading(patient_id)
-    result = process_telemetry_reading(
-        patient_id=reading["patient_id"],
-        heart_rate=reading.get("heart_rate"),
-        spo2=reading.get("spo2"),
-        respiratory_rate=reading.get("respiratory_rate"),
-        body_temperature=reading.get("body_temperature"),
-        source_tag=f"SIMULATOR_{reading.get('event_simulated', 'NORMAL')}"
-    )
-    result["simulator_raw"] = reading
-    await ws_manager.broadcast({"type": "VITAL_UPDATE", "data": result})
-    return result
+@app.post("/api/simulator/tick")
+async def get_simulator_tick(patient_id: Optional[str] = None):
+    """
+    Generates next telemetry reading from the Virtual Wearable Simulator,
+    constructs a standard HL7 FHIR R4 Bundle, and submits it directly into
+    the FHIR R4 Ingestion API pipeline.
+    """
+    p_id = patient_id or virtual_wearable_simulator.active_patient_id
+    reading = virtual_wearable_simulator.generate_reading(p_id)
+    
+    # 1. Convert to FHIR R4 Bundle with proper LOINC codes
+    bundle = virtual_wearable_simulator.create_fhir_bundle(reading)
+    
+    # 2. Ingest through the official FHIR R4 Ingestion API!
+    ingest_result = await ingest_fhir_bundle(bundle)
+    
+    eval_result = ingest_result.get("latest_eval") or {}
+    eval_result["simulator_raw"] = reading
+    eval_result["fhir_ingestion"] = {
+        "status": "ACCEPTED",
+        "resourceType": "Bundle",
+        "observations_saved": ingest_result.get("observations_ingested", 0),
+        "loinc_codes": ["8867-4", "2708-6", "9279-1", "8310-5"]
+    }
+    return eval_result
+
+
+@app.get("/api/bidmc/state")
+def get_bidmc_state():
+    """Returns the current runtime state of the PhysioNet BIDMC Dataset Replay engine."""
+    return bidmc_replay_engine.get_state()
+
+
+class BIDMCControlRequest(BaseModel):
+    action: str  # "play" | "pause" | "resume" | "reset" | "step"
+    file: Optional[str] = None
+    speed: Optional[float] = None
+    patient_id: Optional[str] = None
+
+
+@app.post("/api/bidmc/control")
+async def control_bidmc_replay(body: BIDMCControlRequest):
+    """Controls the BIDMC Dataset Replay engine (play, pause, resume, reset, step)."""
+    action = body.action.lower()
+    if body.file and body.file != bidmc_replay_engine.active_file:
+        bidmc_replay_engine.select_dataset(body.file)
+    if body.speed:
+        bidmc_replay_engine.set_playback_speed(body.speed)
+
+    if action in ("play", "start"):
+        state = bidmc_replay_engine.play(body.patient_id, body.speed)
+    elif action == "pause":
+        state = bidmc_replay_engine.pause()
+    elif action == "resume":
+        state = bidmc_replay_engine.resume()
+    elif action == "reset":
+        state = bidmc_replay_engine.reset()
+    elif action == "step":
+        return await get_bidmc_tick(body.patient_id or bidmc_replay_engine.active_patient_id)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown BIDMC action '{body.action}'")
+    return {"status": "SUCCESS", "action": action, "state": state}
 
 
 @app.get("/api/bidmc/next")
-async def get_bidmc_tick(patient_id: str = "P-001"):
-    """Streams the next genuine observation from the PhysioNet BIDMC dataset."""
-    reading = bidmc_replay_engine.get_next_reading(patient_id)
-    result = process_telemetry_reading(
-        patient_id=reading["patient_id"],
-        heart_rate=reading.get("heart_rate"),
-        spo2=reading.get("spo2"),
-        respiratory_rate=reading.get("respiratory_rate"),
-        body_temperature=reading.get("body_temperature"),
-        source_tag="PHYSIONET_BIDMC"
-    )
-    result["bidmc_raw"] = reading
-    await ws_manager.broadcast({"type": "VITAL_UPDATE", "data": result})
-    return result
+@app.post("/api/bidmc/tick")
+async def get_bidmc_tick(patient_id: Optional[str] = None):
+    """
+    Streams the next genuine observation from the PhysioNet BIDMC dataset,
+    synthesizes body temperature separately through the simulator,
+    constructs a standard HL7 FHIR R4 Bundle, and submits it directly into
+    the FHIR R4 Ingestion API pipeline.
+    """
+    p_id = patient_id or bidmc_replay_engine.active_patient_id
+    reading = bidmc_replay_engine.get_next_reading(p_id)
+    
+    # 1. Convert to FHIR R4 Bundle with proper LOINC codes
+    bundle = bidmc_replay_engine.create_fhir_bundle(reading)
+    
+    # 2. Ingest through the official FHIR R4 Ingestion API!
+    ingest_result = await ingest_fhir_bundle(bundle)
+    
+    eval_result = ingest_result.get("latest_eval") or {}
+    eval_result["bidmc_raw"] = reading
+    eval_result["fhir_ingestion"] = {
+        "status": "ACCEPTED",
+        "resourceType": "Bundle",
+        "observations_saved": ingest_result.get("observations_ingested", 0),
+        "loinc_codes": ["8867-4", "2708-6", "9279-1", "8310-5"]
+    }
+    return eval_result
 
 
 # =====================================================================

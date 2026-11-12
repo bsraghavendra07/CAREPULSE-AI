@@ -7,6 +7,7 @@ import DiagnosisMixChart from './components/DiagnosisMixChart';
 import CardiacVitalsChart from './components/CardiacVitalsChart';
 import PriorityPatientQueue from './components/PriorityPatientQueue';
 import FHIRInspector from './components/FHIRInspector';
+import DataSourcesSimulation from './components/DataSourcesSimulation';
 
 // Patient deep-dive components
 import ScenarioControls from './components/ScenarioControls';
@@ -383,11 +384,13 @@ export default function App() {
             </div>
           )}
 
-          {/* VIEW 3: DEDICATED WHAT-IF SIMULATOR LAB */}
+          {/* VIEW 3: DEDICATED DATA SOURCES & WHAT-IF SIMULATOR LAB */}
           {activeView === 'simulator' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between bg-[#141A23] border border-[#252D38] p-3 rounded-xl">
-                <span className="text-xs font-bold text-white">What-If Recovery Simulator & BIDMC Replay Lab</span>
+                <span className="text-xs font-bold text-white">
+                  Data Sources & Simulation Lab (Requirement 3.2: Software Simulator & BIDMC Replay)
+                </span>
                 <button
                   onClick={() => setActiveView('dashboard')}
                   className="px-3 py-1 rounded-lg bg-[#1E2633] text-xs font-bold text-[#94A3B8] hover:text-white transition"
@@ -395,17 +398,20 @@ export default function App() {
                   ← Back to Dashboard
                 </button>
               </div>
-              <ScenarioControls 
-                dataSource={dataSource}
-                onSelectDataSource={setDataSource}
-                isPlaying={isPlaying}
-                onTogglePlay={() => setIsPlaying(!isPlaying)}
-                onStepNext={executeTick}
-                activeScenario={activeScenario}
-                onSelectScenario={handleSelectScenario}
-                onInjectEvent={handleInjectEvent}
-                activeEvent={activeEvent}
+
+              {/* Requirement 3.2 Dual Panel: Virtual Wearable Simulator & BIDMC Dataset Replay */}
+              <DataSourcesSimulation 
+                activePatientId={activePatientId}
+                onSelectPatient={(pId) => {
+                  setActivePatientId(pId);
+                }}
+                patients={patients}
+                onTelemetryUpdated={(evalData) => {
+                  handleIncomingTelemetry(evalData);
+                }}
               />
+
+              {/* Real-time AI Impact Grid (Radar + Sensor Truth + Alert Card) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-6">
                   <RadarWidget radar={radarResult} />

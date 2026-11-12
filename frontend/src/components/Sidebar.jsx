@@ -138,10 +138,10 @@ export default function Sidebar({
           >
             <div className="flex items-center gap-2.5">
               <Flame className="w-4 h-4 text-[#F97316]" />
-              <span>Deterioration Tests</span>
+              <span>Simulator & BIDMC</span>
             </div>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#8B5CF6] text-white">
-              6
+              3.2
             </span>
           </button>
         </div>
