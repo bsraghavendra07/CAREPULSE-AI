@@ -166,7 +166,7 @@ def recommend_specialty(
     if len(abnormal_categories) >= 2 and (total_score >= 4 or len(abnormal_categories) >= 3):
         return SuggestedSpecialtyResult(
             alert_id=effective_alert_id,
-            triggering_pattern="MULTIPLE_VITAL_ABNORMALITIES",
+            triggering_pattern="Multiple vital-sign abnormalities",
             suggested_specialty="General Medicine",
             reason="The alert is driven by multi-system physiological deviations across multiple vital-sign categories.",
             decision_support_only=True,
@@ -186,18 +186,18 @@ def recommend_specialty(
         if score_spo2 >= score_rr:
             return SuggestedSpecialtyResult(
                 alert_id=effective_alert_id,
-                triggering_pattern="SUSTAINED_SPO2_DECLINE",
+                triggering_pattern="SpO₂ showing a sustained downward trend",
                 suggested_specialty="Pulmonology",
-                reason="The alert is primarily driven by a sustained respiratory-related oxygenation pattern.",
+                reason="The alert is primarily driven by a respiratory-related vital-sign pattern.",
                 decision_support_only=True,
                 is_applicable=True,
             )
         else:
             return SuggestedSpecialtyResult(
                 alert_id=effective_alert_id,
-                triggering_pattern="PERSISTENT_ABNORMAL_RR",
+                triggering_pattern="Persistent abnormal respiratory rate",
                 suggested_specialty="Pulmonology",
-                reason="The alert is primarily driven by a persistent respiratory rate abnormality.",
+                reason="The alert is primarily driven by a respiratory-related vital-sign pattern.",
                 decision_support_only=True,
                 is_applicable=True,
             )
@@ -206,9 +206,9 @@ def recommend_specialty(
     if card_score >= resp_score and card_score >= temp_score and card_score > 0:
         return SuggestedSpecialtyResult(
             alert_id=effective_alert_id,
-            triggering_pattern="HEART_RATE_CONCERN",
+            triggering_pattern="Heart-rate related concern",
             suggested_specialty="Cardiology",
-            reason="The alert is primarily driven by a cardiovascular vital-sign pattern (heart rate / hemodynamic deviation).",
+            reason="The alert is primarily driven by a cardiovascular vital-sign pattern.",
             decision_support_only=True,
             is_applicable=True,
         )
@@ -217,9 +217,9 @@ def recommend_specialty(
     if temp_score > 0:
         return SuggestedSpecialtyResult(
             alert_id=effective_alert_id,
-            triggering_pattern="PERSISTENT_TEMP_ABNORMALITY",
+            triggering_pattern="Persistent temperature abnormality",
             suggested_specialty="Internal Medicine",
-            reason="The alert is primarily driven by a persistent core body temperature abnormality.",
+            reason="The alert is primarily driven by a core body temperature abnormality.",
             decision_support_only=True,
             is_applicable=True,
         )
@@ -228,7 +228,7 @@ def recommend_specialty(
     if len(abnormal_categories) > 0:
         return SuggestedSpecialtyResult(
             alert_id=effective_alert_id,
-            triggering_pattern="MULTIPLE_VITAL_ABNORMALITIES",
+            triggering_pattern="Multiple vital-sign abnormalities",
             suggested_specialty="General Medicine",
             reason="The alert involves combined clinical vital-sign deviations.",
             decision_support_only=True,

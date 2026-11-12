@@ -157,7 +157,33 @@ export function News2ScorePanel({ news2, sqiStatus, suggestedSpecialty }: News2S
           </div>
         )}
 
-        {/* Clinical Decision Support: Suggested Specialty for Review */}
+        {/* 1. Alert Explanation: "Why did it alert?" Section */}
+        {(news2.total_score > 0 || news2.has_red_score || news2.triage_tier !== 'ROUTINE') && (
+          <div className="rounded-xl border border-[#252F40] bg-[#151C2B] p-4 text-[#F1F5F9] space-y-2 shadow-sm">
+            <div className="flex items-center justify-between border-b border-[#252F40] pb-2">
+              <div className="flex items-center space-x-2 text-amber-400">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  Why did it alert?
+                </span>
+              </div>
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                {news2.triage_tier || 'REVIEW'} TRIGGER
+              </span>
+            </div>
+
+            <p className="text-xs text-[#F1F5F9] leading-relaxed">
+              {news2.alert_reason || 'Physiological vital-sign parameters exceeded safe baseline recovery thresholds.'}
+            </p>
+
+            <div className="pt-2 border-t border-[#252F40]/60 text-[11px] text-[#94A3B8] flex items-center justify-between">
+              <span>Required Clinical Action: <strong className="text-slate-200 font-medium">{news2.clinical_action || actionText}</strong></span>
+              <span className="font-mono text-slate-400">Score: {news2.total_score}</span>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Suggested Specialty for Review — placed DIRECTLY BELOW "Why did it alert?" */}
         <SuggestedSpecialtyCard
           specialty={suggestedSpecialty || news2.suggested_specialty}
           triageTier={news2.triage_tier}

@@ -386,7 +386,8 @@ export function DashboardPage({
                   <th className="pb-2">Status</th>
                   <th className="pb-2">Heart Rate</th>
                   <th className="pb-2">BP</th>
-                  <th className="pb-2">NEWS2 Score</th>
+                  <th className="pb-2">NEWS2</th>
+                  <th className="pb-2">Suggested Specialty</th>
                   <th className="pb-2 text-right">Action</th>
                 </tr>
               </thead>
@@ -395,6 +396,7 @@ export function DashboardPage({
                   const tick = latestTicks[p.id];
                   const news2 = tick?.news2;
                   const vitals = tick?.vitals;
+                  const specialty = tick?.suggested_specialty || news2?.suggested_specialty;
 
                   let statusPill = (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#122b1f] text-[#4ade80] border border-[#1f4a35]">
@@ -405,7 +407,7 @@ export function DashboardPage({
 
                   if (news2?.risk_level === 'HIGH' || news2?.has_red_score) {
                     statusPill = (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#331414] text-[#f87171] border border-[#521b1b] animate-pulse">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#331414] text-[#f87171] border border-[#521b1b]">
                         Critical
                       </span>
                     );
@@ -422,6 +424,25 @@ export function DashboardPage({
                   const hrVal = vitals?.heart_rate?.value !== undefined ? String(vitals.heart_rate.value) : p.baseline.heart_rate;
                   const bpVal = vitals?.systolic_bp?.value !== undefined ? `${vitals.systolic_bp.value} / 80` : `${p.baseline.systolic_bp} / 80`;
                   const score = news2?.total_score ?? 0;
+
+                  // Specialty pill display
+                  let specialtyDisplay = (
+                    <span className="text-[11px] text-slate-500 font-mono">—</span>
+                  );
+
+                  if (specialty?.is_applicable && specialty.suggested_specialty) {
+                    let icon = '🏥';
+                    if (specialty.suggested_specialty === 'Pulmonology') icon = '🫁';
+                    else if (specialty.suggested_specialty === 'Cardiology') icon = '🫀';
+                    else if (specialty.suggested_specialty === 'Internal Medicine') icon = '🩺';
+
+                    specialtyDisplay = (
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#1a2333] text-amber-300 border border-amber-500/40">
+                        <span>{icon}</span>
+                        <span>{specialty.suggested_specialty}</span>
+                      </span>
+                    );
+                  }
 
                   return (
                     <tr
@@ -445,7 +466,7 @@ export function DashboardPage({
                       </td>
                       <td className="py-2.5">
                         <div className="flex items-center space-x-2">
-                          <div className="h-1.5 w-14 rounded-full bg-[#1e2533] overflow-hidden">
+                          <div className="h-1.5 w-12 rounded-full bg-[#1e2533] overflow-hidden">
                             <div
                               className={`h-full ${barColor}`}
                               style={{ width: `${Math.min(100, Math.max(10, score * 10))}%` }}
@@ -453,6 +474,9 @@ export function DashboardPage({
                           </div>
                           <span className="font-mono font-bold text-white text-xs">{score}</span>
                         </div>
+                      </td>
+                      <td className="py-2.5">
+                        {specialtyDisplay}
                       </td>
                       <td className="py-2.5 text-right">
                         <span className="text-[10px] text-emerald-400 hover:underline">Deep-Dive →</span>
