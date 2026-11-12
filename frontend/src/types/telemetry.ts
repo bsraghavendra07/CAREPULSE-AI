@@ -47,6 +47,8 @@ export interface SignalReliability {
   artifact_type?: string | null;
 }
 
+export type ArtifactType = 'NONE' | 'MISSING_READING' | 'FLATLINE' | 'MOTION_NOISE' | 'INVALID_VALUE';
+
 export interface SignalQuality {
   sqi: number;
   status: SQIStatus;
@@ -60,6 +62,30 @@ export interface SignalQuality {
   genuine_deterioration_note?: string | null;
   signals?: Record<string, SignalReliability>;
   note: string | null;
+  is_unreliable?: boolean;
+  artifact_type?: ArtifactType;
+  affected_vital?: string | null;
+  unreliable_reason?: string | null;
+  original_reading?: Record<string, any>;
+  suppress_critical_alert?: boolean;
+  traceable_history?: number[];
+}
+
+export type CDSAlertLevel = 'ROUTINE' | 'WATCH' | 'REVIEW' | 'URGENT';
+
+export interface CDSAlert {
+  alert_id: string;
+  patient_id: string;
+  patient_name: string;
+  alert_level: CDSAlertLevel;
+  vital_sign: string;
+  current_value: string;
+  trend_pattern: string;
+  explanation: string;
+  timestamp: string;
+  clinical_action: string;
+  is_artifact_suppressed?: boolean;
+  system_classification: string;
 }
 
 export interface NEWS2Score {
@@ -149,10 +175,42 @@ export interface TelemetryTick {
   personalized: PersonalizedInsight;
   suggested_specialty?: SuggestedSpecialty;
   routed_alert?: any;
+  criticality_analysis?: any;
+  dispatched_sms?: any;
   ml_anomaly?: MLAnomalyPrediction;
+  cds_alert?: CDSAlert | null;
   fhir_observation_id: string;
   probe_removed?: boolean;
   active_simulation_event?: ActiveSimulationEvent | null;
+}
+
+export interface BenchmarkMetric {
+  metric_name: string;
+  fixed_threshold: string;
+  our_system: string;
+  improvement: string;
+  clinical_rationale: string;
+}
+
+export interface ScenarioBenchmarkResult {
+  scenario_id: string;
+  scenario_name: string;
+  description: string;
+  fixed_threshold_lead_time_min: number;
+  our_system_lead_time_min: number;
+  fixed_threshold_false_alerts: number;
+  our_system_false_alerts: number;
+  fixed_alerts_per_patient_day: number;
+  our_alerts_per_patient_day: number;
+}
+
+export interface PerformanceBenchmarkReport {
+  is_demo_sample_data: boolean;
+  title: string;
+  disclaimer: string;
+  summary_metrics: BenchmarkMetric[];
+  scenario_breakdowns: ScenarioBenchmarkResult[];
+  methodology: Record<string, any>;
 }
 
 export interface PerformanceReport {

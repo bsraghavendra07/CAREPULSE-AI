@@ -91,6 +91,18 @@ const SCENARIOS: ScenarioDef[] = [
     buttonBg: 'bg-amber-600 hover:bg-amber-500 text-black',
   },
   {
+    id: 'isolated_spo2_dip',
+    name: 'Step 7: Isolated SpO₂ Dip',
+    subtitle: 'Transient Motion Drop (98 → 97 → 96 → 70 → 97 → 98)',
+    defaultPatientId: 'P-001',
+    description:
+      'Injects an isolated transient reading of 70% SpO₂ surrounded by normal baseline (98%). Demonstrates Step 7 Artifact Detection: flagged as MOTION_NOISE (Unreliable) and safely quarantines the Urgent alert to prevent alarm fatigue.',
+    expectedResponse: 'Step 7 flags MOTION_NOISE, suppresses false URGENT alert, and maintains full traceability.',
+    badgeColor: 'text-teal-400 bg-teal-500/10 border-teal-500/30',
+    borderColor: 'border-teal-500/30 bg-teal-500/5',
+    buttonBg: 'bg-teal-600 hover:bg-teal-500 text-white font-bold',
+  },
+  {
     id: 'sensor_disconnect',
     name: 'Sensor Disconnect',
     subtitle: 'Lead Fall-Off / Probe Detachment',
