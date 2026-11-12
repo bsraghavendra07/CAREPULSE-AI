@@ -1,0 +1,57 @@
+{
+  "resourceType": "Patient",
+  "id": "P-003",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+    ]
+  },
+  "identifier": [
+    {
+      "system": "urn:minearena:synthea",
+      "value": "P-003"
+    }
+  ],
+  "name": [
+    {
+      "family": "Walker",
+      "given": ["James"]
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1971-11-03",
+  "extension": [
+    {
+      "url": "urn:minearena:condition",
+      "valueString": "Post-Abdominal Surgery / Sepsis Risk"
+    },
+    {
+      "url": "urn:minearena:scale2_prescribed",
+      "valueBoolean": false
+    },
+    {
+      "url": "urn:minearena:baseline_hr",
+      "valueDecimal": 72
+    },
+    {
+      "url": "urn:minearena:baseline_spo2",
+      "valueDecimal": 97
+    },
+    {
+      "url": "urn:minearena:baseline_rr",
+      "valueDecimal": 16
+    },
+    {
+      "url": "urn:minearena:baseline_sbp",
+      "valueDecimal": 130
+    },
+    {
+      "url": "urn:minearena:baseline_temp",
+      "valueDecimal": 36.9
+    },
+    {
+      "url": "urn:minearena:risk_summary",
+      "valueString": "Post-surgical sepsis risk, monitor for rising temperature and tachycardia"
+    }
+  ]
+}

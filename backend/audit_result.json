@@ -1,0 +1,208 @@
+{
+  "step1_backend": {
+    "get_root": {
+      "status": true,
+      "code": 200
+    },
+    "patients_list": {
+      "status": true,
+      "count": 5,
+      "patient_ids": [
+        "P-001",
+        "P-002",
+        "P-003",
+        "P-004",
+        "P-005"
+      ]
+    },
+    "patient_profiles": {
+      "P-001": {
+        "status": true,
+        "condition": "Post-Myocardial Infarction / Heart Failure",
+        "scale2_prescribed": false
+      },
+      "P-002": {
+        "status": true,
+        "condition": "Post-COPD Exacerbation",
+        "scale2_prescribed": true
+      },
+      "P-003": {
+        "status": true,
+        "condition": "Post-Abdominal Surgery / Sepsis Risk",
+        "scale2_prescribed": false
+      },
+      "P-004": {
+        "status": true,
+        "condition": "Paroxysmal Atrial Fibrillation & Tremors",
+        "scale2_prescribed": false
+      },
+      "P-005": {
+        "status": true,
+        "condition": "Post-Knee Arthroplasty / Stable",
+        "scale2_prescribed": false
+      }
+    },
+    "telemetry_history_api": {
+      "status": true,
+      "records_returned": 0
+    },
+    "scenarios_active_api": {
+      "status": true
+    },
+    "performance_report_api": {
+      "status": true,
+      "total_ticks": 0
+    }
+  },
+  "step2_datasources": {
+    "bidmc_replay": {
+      "status": true,
+      "has_hr": true,
+      "has_spo2": true,
+      "has_rr": true,
+      "sample_tick": {
+        "hr": {
+          "value": 77,
+          "source": "BIDMC"
+        },
+        "spo2": {
+          "value": 98,
+          "source": "BIDMC"
+        },
+        "rr": {
+          "value": 15.3,
+          "source": "BIDMC"
+        },
+        "timestamp": "2026-11-12T12:00:00.000Z"
+      }
+    },
+    "wearable_simulator": {
+      "status": true,
+      "with_bidmc_sources": {
+        "hr": "BIDMC",
+        "spo2": "BIDMC",
+        "rr": "BIDMC",
+        "sbp": "SIMULATED",
+        "temp": "SIMULATED",
+        "acvpu": "SIMULATED",
+        "supplemental_oxygen": "SIMULATED"
+      },
+      "full_sim_sources": {
+        "hr": "SIMULATED",
+        "spo2": "SIMULATED",
+        "rr": "SIMULATED",
+        "sbp": "SIMULATED",
+        "temp": "SIMULATED",
+        "acvpu": "SIMULATED",
+        "supplemental_oxygen": "SIMULATED"
+      }
+    },
+    "scripted_scenarios": {
+      "sepsis": {
+        "applied": true,
+        "sample_vitals": {
+          "heart_rate": 100.0,
+          "oxygen_saturation": 97,
+          "respiratory_rate": 22.0,
+          "systolic_bp": 102.5,
+          "body_temperature": 38.1
+        }
+      },
+      "copd_exacerbation": {
+        "applied": true,
+        "sample_vitals": {
+          "heart_rate": 75,
+          "oxygen_saturation": 90.5,
+          "respiratory_rate": 21.0,
+          "systolic_bp": 120,
+          "body_temperature": 36.8
+        }
+      },
+      "cardiac_decompensation": {
+        "applied": true,
+        "sample_vitals": {
+          "heart_rate": 105.0,
+          "oxygen_saturation": 97,
+          "respiratory_rate": 20.0,
+          "systolic_bp": 104.0,
+          "body_temperature": 36.8
+        }
+      },
+      "motion_artifact": {
+        "applied": true,
+        "sample_vitals": {
+          "heart_rate": 70.9,
+          "oxygen_saturation": 100,
+          "respiratory_rate": 16,
+          "systolic_bp": 120,
+          "body_temperature": 36.8,
+          "motion_injected": true
+        }
+      },
+      "sensor_disconnect": {
+        "applied": true,
+        "sample_vitals": {
+          "heart_rate": 75.0,
+          "oxygen_saturation": 97.0,
+          "respiratory_rate": 16.0,
+          "systolic_bp": 120,
+          "body_temperature": 36.8
+        }
+      },
+      "normal_recovery": {
+        "applied": true,
+        "sample_vitals": {
+          "heart_rate": 75,
+          "oxygen_saturation": 97,
+          "respiratory_rate": 16,
+          "systolic_bp": 120,
+          "body_temperature": 36.8
+        }
+      }
+    }
+  },
+  "step3_clinical_engines": {
+    "news2_scale1_vs_scale2": {
+      "scale1_total": 3,
+      "scale1_spo2_score": 3,
+      "scale2_total": 0,
+      "scale2_spo2_score": 0,
+      "differentiated_properly": true
+    },
+    "news2_red_score": {
+      "has_red_score": true,
+      "red_score_param": "hr",
+      "risk_level": "LOW_MEDIUM"
+    },
+    "personalized_engine": {
+      "baseline": {
+        "hr": 88.0,
+        "spo2": 96.0,
+        "rr": 18.0
+      },
+      "z_scores": {
+        "hr": 3.0,
+        "spo2": 0.0,
+        "rr": 0.0
+      },
+      "is_advisory_alert": false,
+      "alert_parameters": []
+    },
+    "artifact_detection": {
+      "probe_removal_flagged": true,
+      "probe_removal_note": "Physiologically impossible HR=0.0; Physiologically impossible SpO2=0.0; Physiologically impossible Temp=20.0",
+      "desat_rejected_as_noise": false
+    }
+  },
+  "step4_fhir": {
+    "observation_resourceType": "Observation",
+    "loinc_heart_rate": "8867-4",
+    "loinc_mapping_correct": true,
+    "provenance_tag": "BIDMC",
+    "bundle_total": 1,
+    "local_store_roundtrip": true,
+    "hapi_cloud_interaction": "Resilient (Success or Handled Gracefully)"
+  },
+  "step5_dashboard": {},
+  "step6_performance": {}
+}

@@ -1,0 +1,95 @@
+export type DataSource = 'BIDMC' | 'SIMULATED';
+export type SQIStatus = 'HIGH' | 'MEDIUM' | 'LOW';
+export type RiskLevel = 'LOW' | 'LOW_MEDIUM' | 'MEDIUM' | 'HIGH';
+export type ScaleUsed = 'SCALE_1' | 'SCALE_2';
+
+export type TriageTier = 'ROUTINE' | 'WATCH' | 'REVIEW' | 'URGENT';
+
+export interface VitalValue {
+  value: number | string | boolean;
+  source: DataSource;
+}
+
+export interface Vitals {
+  heart_rate: VitalValue;
+  oxygen_saturation: VitalValue;
+  respiratory_rate: VitalValue;
+  systolic_bp: VitalValue;
+  body_temperature: VitalValue;
+  consciousness: VitalValue;
+  supplemental_oxygen: VitalValue;
+}
+
+export interface SignalQuality {
+  sqi: number;
+  status: SQIStatus;
+  artifact_detected: boolean;
+  motion_injected: boolean;
+  note: string | null;
+}
+
+export interface NEWS2Score {
+  total_score: number;
+  scale_used: ScaleUsed;
+  scale2_prescribed: boolean;
+  scale2_justification: string | null;
+  risk_level: RiskLevel;
+  has_red_score: boolean;
+  red_score_parameter: string | null;
+  sub_scores: Record<string, number>;
+  triage_tier?: TriageTier;
+  alert_reason?: string;
+  clinical_action?: string;
+}
+
+export interface PersonalizedInsight {
+  is_advisory_alert: boolean;
+  alert_parameters: string[];
+  z_scores: Record<string, number>;
+  baseline: Record<string, number>;
+  advisory_note: string;
+}
+
+export interface TelemetryTick {
+  timestamp: string;
+  patient_id: string;
+  tick_number: number;
+  vitals: Vitals;
+  signal_quality: SignalQuality;
+  news2: NEWS2Score;
+  personalized: PersonalizedInsight;
+  fhir_observation_id: string;
+}
+
+export interface PerformanceReport {
+  total_ticks: number;
+  news2_alerts_fired: number;
+  news2_red_scores: number;
+  personalized_advisories: number;
+  artifact_flags: number;
+  artifact_low_flags: number;
+  news2_alert_rate: number;
+  artifact_flag_rate: number;
+  alerts_per_patient_day?: number;
+  total_monitored_patient_days?: number;
+  per_patient: Record<string, {
+    total_ticks: number;
+    news2_alerts_fired: number;
+    news2_red_scores: number;
+    personalized_advisories: number;
+    artifact_flags: number;
+    news2_alert_rate: number;
+    artifact_flag_rate: number;
+    alerts_per_patient_day?: number;
+    monitored_patient_days?: number;
+  }>;
+  scenario_events: Array<{
+    patient_id: string;
+    scenario: string;
+    action: string;
+    timestamp: string;
+    tick: number;
+  }>;
+  detection_latency: Record<string, number | null>;
+}
+

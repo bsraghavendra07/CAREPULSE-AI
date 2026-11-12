@@ -1,0 +1,61 @@
+{
+  "resourceType": "Patient",
+  "id": "P-004",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+    ]
+  },
+  "identifier": [
+    {
+      "system": "urn:minearena:synthea",
+      "value": "P-004"
+    }
+  ],
+  "name": [
+    {
+      "family": "Mitchell",
+      "given": ["Dorothy"]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1946-02-10",
+  "extension": [
+    {
+      "url": "urn:minearena:condition",
+      "valueString": "Paroxysmal Atrial Fibrillation & Tremors"
+    },
+    {
+      "url": "urn:minearena:scale2_prescribed",
+      "valueBoolean": false
+    },
+    {
+      "url": "urn:minearena:baseline_hr",
+      "valueDecimal": 82
+    },
+    {
+      "url": "urn:minearena:baseline_spo2",
+      "valueDecimal": 95
+    },
+    {
+      "url": "urn:minearena:baseline_rr",
+      "valueDecimal": 17
+    },
+    {
+      "url": "urn:minearena:baseline_sbp",
+      "valueDecimal": 140
+    },
+    {
+      "url": "urn:minearena:baseline_temp",
+      "valueDecimal": 36.7
+    },
+    {
+      "url": "urn:minearena:hr_variance_note",
+      "valueString": "Higher HR variance expected due to paroxysmal AF"
+    },
+    {
+      "url": "urn:minearena:risk_summary",
+      "valueString": "Paroxysmal AF with tremors — expect HR variability, motion artifact risk from tremors"
+    }
+  ]
+}
