@@ -12,6 +12,12 @@ import {
   ChevronRight,
   Info,
   Calendar,
+  Wind,
+  Stethoscope,
+  Brain,
+  Droplets,
+  Building2,
+  UserCheck,
 } from 'lucide-react';
 
 interface PatientsPageProps {
@@ -26,6 +32,101 @@ const PATIENT_MEDICATIONS: Record<string, string[]> = {
   'P-003': ['Ceftriaxone 1g IV', 'Metronidazole 500mg IV', 'Acetaminophen 1g Q6H', 'Enoxaparin 40mg'],
   'P-004': ['Apixaban 5mg BID', 'Bisoprolol 2.5mg daily', 'Primidone 50mg daily', 'Atorvastatin 20mg'],
   'P-005': ['Enoxaparin 40mg SC daily', 'Celecoxib 200mg daily', 'Acetaminophen 1g PRN'],
+};
+
+// Feature 1 & 2: Helper for Assigned Department and Specialist Categorisation
+export const getSpecialistInfo = (p: PatientProfile) => {
+  if (p.department && p.specialist_name) {
+    return {
+      department: p.department,
+      specialistName: p.specialist_name,
+      specialistTitle: p.specialist_title || 'Attending Specialist',
+    };
+  }
+  const cond = (p.condition || '').toLowerCase();
+  if (cond.includes('heart') || cond.includes('infarction') || cond.includes('fibrillation') || cond.includes('cardiac')) {
+    return {
+      department: 'Cardiology',
+      specialistName: 'Dr. Robert Rivera, MD',
+      specialistTitle: 'Senior Cardiologist & Electrophysiology Lead',
+    };
+  }
+  if (cond.includes('copd') || cond.includes('pneumonia') || cond.includes('respiratory')) {
+    return {
+      department: 'Pulmonology',
+      specialistName: 'Dr. Elena Rostova, MD',
+      specialistTitle: 'Consultant Pulmonologist & Respiratory Lead',
+    };
+  }
+  if (cond.includes('sepsis') || cond.includes('abdominal')) {
+    return {
+      department: 'General Medicine / Critical Care',
+      specialistName: 'Dr. Marcus Vance, MD',
+      specialistTitle: 'Consultant in Internal & Critical Care Medicine',
+    };
+  }
+  if (cond.includes('arthroplasty') || cond.includes('orthopedic') || cond.includes('surgical')) {
+    return {
+      department: 'Surgical Care / Orthopedics',
+      specialistName: 'Dr. Julian Hayes, MD, FRCS',
+      specialistTitle: 'Consultant Orthopedic & Post-Operative Surgeon',
+    };
+  }
+  return {
+    department: 'General Medicine / Critical Care',
+    specialistName: 'Dr. Robert Rivera, MD',
+    specialistTitle: 'General Attending Clinician',
+  };
+};
+
+export const getDepartmentConfig = (dept: string) => {
+  if (dept.includes('Cardiology')) {
+    return {
+      icon: Heart,
+      color: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+      badgeColor: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+    };
+  }
+  if (dept.includes('Pulmonology')) {
+    return {
+      icon: Wind,
+      color: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+      badgeColor: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
+    };
+  }
+  if (dept.includes('Critical Care') || dept.includes('General Medicine')) {
+    return {
+      icon: Activity,
+      color: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+      badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    };
+  }
+  if (dept.includes('Surgical') || dept.includes('Orthopedic')) {
+    return {
+      icon: Stethoscope,
+      color: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+      badgeColor: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+    };
+  }
+  if (dept.includes('Neurology')) {
+    return {
+      icon: Brain,
+      color: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+      badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+    };
+  }
+  if (dept.includes('Nephrology')) {
+    return {
+      icon: Droplets,
+      color: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+      badgeColor: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+    };
+  }
+  return {
+    icon: Stethoscope,
+    color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    badgeColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+  };
 };
 
 export function PatientsPage({
@@ -143,6 +244,10 @@ export function PatientsPage({
           const score = news2?.total_score ?? 0;
           const tier = news2?.triage_tier ?? 'ROUTINE';
 
+          const specInfo = getSpecialistInfo(p);
+          const deptCfg = getDepartmentConfig(specInfo.department);
+          const DeptIcon = deptCfg.icon;
+
           let tierBadge = (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#122b1f] text-[#4ade80] border border-[#1f4a35]">
               ROUTINE
@@ -209,6 +314,26 @@ export function PatientsPage({
                       <span>NEWS2 Scale 2 Prescribed (88–92% target)</span>
                     </div>
                   )}
+                </div>
+
+                {/* Feature 2: Assigned Department & Specialist */}
+                <div className="rounded-xl bg-[#0c1017] border border-[#1a1f2c] p-2.5 flex items-center justify-between">
+                  <div className="flex items-center space-x-2.5 overflow-hidden pr-2">
+                    <div className={`p-1.5 rounded-lg border ${deptCfg.color} shrink-0`}>
+                      <DeptIcon className="h-4 w-4" />
+                    </div>
+                    <div className="truncate">
+                      <div className="text-[11px] font-bold text-white truncate">
+                        {specInfo.specialistName}
+                      </div>
+                      <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                        {specInfo.specialistTitle}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${deptCfg.badgeColor} shrink-0 whitespace-nowrap`}>
+                    {specInfo.department}
+                  </div>
                 </div>
 
                 {/* Vitals Grid */}

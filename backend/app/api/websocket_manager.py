@@ -14,6 +14,7 @@ from app.config import WS_TICK_INTERVAL_BASE
 from app.core.artifact_detector import ArtifactDetector, SQIResult
 from app.core.news2 import NEWS2Result, calculate_news2
 from app.core.specialty_recommender import recommend_specialty, SuggestedSpecialtyResult
+from app.core.specialist_router import route_clinical_alert, RoutedAlert
 from app.core.personalized import PersonalizedEngine, PersonalizedResult
 from app.fhir.local_store import LocalFHIRStore
 from app.fhir.mapper import create_observation, _UNITS
@@ -232,6 +233,17 @@ class TelemetryManager:
                     alert_id=f"alert-{pid}-{self.tick_number}",
                 )
 
+                # 6.6 Smart Specialist Routing Engine
+                routed_alert = route_clinical_alert(
+                    patient=profile,
+                    news2_result=news2_result,
+                    vitals=vitals,
+                    sqi_status=sqi_result.status,
+                    sqi_note=sqi_result.note,
+                    tick_number=self.tick_number,
+                    decision_specialty=specialty_result.suggested_specialty if specialty_result.is_applicable else None,
+                )
+
                 # 7. FHIR Observation (store locally)
                 now_iso = datetime.now(timezone.utc).isoformat()
                 obs_id: str | None = None
@@ -261,6 +273,7 @@ class TelemetryManager:
                     },
                     "news2": _news2_to_dict(news2_result),
                     "suggested_specialty": specialty_result.model_dump(),
+                    "routed_alert": routed_alert.model_dump() if routed_alert else None,
                     "personalized": _pers_to_dict(pers_result),
                     "fhir_observation_id": obs_id,
                 }
@@ -320,6 +333,14 @@ class TelemetryManager:
             supplemental_oxygen=False,
         )
         pers_result = self._personalized.get_assessment(patient_id, news2_input)
+        routed_alert = route_clinical_alert(
+            patient=profile,
+            news2_result=news2_result,
+            vitals=vitals,
+            sqi_status="GOOD",
+            sqi_note=None,
+            tick_number=self.tick_number,
+        )
 
         now_iso = datetime.now(timezone.utc).isoformat()
         payload = {
@@ -335,6 +356,7 @@ class TelemetryManager:
                 "note": f"Ingested via FHIR R4 API ({vital_name}={value} {unit})",
             },
             "news2": _news2_to_dict(news2_result),
+            "routed_alert": routed_alert.model_dump() if routed_alert else None,
             "personalized": _pers_to_dict(pers_result),
             "fhir_observation_id": obs_id,
         }

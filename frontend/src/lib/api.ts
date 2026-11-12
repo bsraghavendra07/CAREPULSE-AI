@@ -1,6 +1,7 @@
 import { PatientProfile } from '../types/patient';
 import { PerformanceReport } from '../types/telemetry';
 import { FHIRBundle } from '../types/fhir';
+import { RoutedAlert, AlertStats } from '../types/alert';
 
 const API_BASE = '/api';
 
@@ -63,4 +64,63 @@ export async function fetchActiveScenarios(): Promise<Record<string, string | nu
   if (!res.ok) return {};
   return res.json();
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// SMART SPECIALIST ALERTS API
+// ─────────────────────────────────────────────────────────────────────
+
+export async function fetchRoutedAlerts(params?: {
+  department?: string;
+  status?: string;
+  severity?: string;
+  patient_id?: string;
+}): Promise<RoutedAlert[]> {
+  const query = new URLSearchParams();
+  if (params?.department && params.department !== 'all') query.set('department', params.department);
+  if (params?.status && params.status !== 'all') query.set('status', params.status);
+  if (params?.severity && params.severity !== 'all') query.set('severity', params.severity);
+  if (params?.patient_id) query.set('patient_id', params.patient_id);
+
+  const url = `${API_BASE}/alerts/?${query.toString()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch routed alerts: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchAlertStats(): Promise<AlertStats> {
+  const res = await fetch(`${API_BASE}/alerts/stats`);
+  if (!res.ok) throw new Error(`Failed to fetch alert stats: ${res.statusText}`);
+  return res.json();
+}
+
+export async function acknowledgeAlert(alertId: string, clinicianName: string = 'Dr. Rivera'): Promise<RoutedAlert> {
+  const res = await fetch(`${API_BASE}/alerts/${alertId}/acknowledge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clinician_name: clinicianName }),
+  });
+  if (!res.ok) throw new Error(`Failed to acknowledge alert ${alertId}: ${res.statusText}`);
+  return res.json();
+}
+
+export async function reviewAlert(alertId: string, clinicianName: string = 'Dr. Rivera'): Promise<RoutedAlert> {
+  const res = await fetch(`${API_BASE}/alerts/${alertId}/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clinician_name: clinicianName }),
+  });
+  if (!res.ok) throw new Error(`Failed to review alert ${alertId}: ${res.statusText}`);
+  return res.json();
+}
+
+export async function resolveAlert(alertId: string, clinicianName: string = 'Dr. Rivera'): Promise<RoutedAlert> {
+  const res = await fetch(`${API_BASE}/alerts/${alertId}/resolve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clinician_name: clinicianName }),
+  });
+  if (!res.ok) throw new Error(`Failed to resolve alert ${alertId}: ${res.statusText}`);
+  return res.json();
+}
+
 

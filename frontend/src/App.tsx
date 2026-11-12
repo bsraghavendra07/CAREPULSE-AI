@@ -15,6 +15,7 @@ import { VitalsMonitorPage } from './pages/VitalsMonitorPage';
 import { FhirPage } from './pages/FhirPage';
 import { PerformanceReportPage } from './pages/PerformanceReportPage';
 import { DeteriorationTestsPage } from './pages/DeteriorationTestsPage';
+import { SpecialistAlertCenterPage } from './pages/SpecialistAlertCenterPage';
 import { Activity } from 'lucide-react';
 
 interface AuthenticatedRoutesProps {
@@ -128,7 +129,19 @@ function AuthenticatedRoutes({
           element={<FhirPage patients={patientList} />}
         />
 
-        {/* 5. PERFORMANCE REPORT */}
+        {/* 5. SPECIALIST ALERT CENTER (Feature 3) */}
+        <Route
+          path="/alerts"
+          element={
+            <SpecialistAlertCenterPage
+              patients={patientList}
+              latestTicks={latestTicks}
+              onSelectPatient={(p) => setSelectedPatientModal(p)}
+            />
+          }
+        />
+
+        {/* 6. PERFORMANCE REPORT */}
         <Route
           path="/report"
           element={<PerformanceReportPage />}

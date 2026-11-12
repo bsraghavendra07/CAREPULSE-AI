@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.api import (
+    routes_alerts,
     routes_fhir,
     routes_patients,
     routes_report,
@@ -21,6 +22,7 @@ from app.api import (
     routes_telemetry,
 )
 from app.api.websocket_manager import TelemetryManager
+from app.core.specialist_router import categorize_patient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -83,8 +85,12 @@ def _load_synthea_profiles() -> dict[str, dict[str, Any]]:
                 # Connect BIDMC CSV replay for patients
                 "bidmc_csv": str(bidmc_csv_path) if bidmc_csv_path.exists() else None,
             }
+            # Feature 1: Automatically assign relevant medical department & specialist based on conditions
+            specialist_meta = categorize_patient(profile)
+            profile.update(specialist_meta)
+
             patients[pid] = profile
-            logger.info("Loaded patient profile %s (%s)", pid, full_name)
+            logger.info("Loaded patient profile %s (%s) -> %s (%s)", pid, full_name, profile.get("department"), profile.get("specialist_name"))
         except Exception as exc:
             logger.error("Failed to load patient from %s: %s", json_file, exc)
 
@@ -145,6 +151,7 @@ app.add_middleware(
 # Include API routes
 app.include_router(routes_patients.router)
 app.include_router(routes_telemetry.router)
+app.include_router(routes_alerts.router)
 app.include_router(routes_scenarios.router)
 app.include_router(routes_report.router)
 app.include_router(routes_fhir.router)

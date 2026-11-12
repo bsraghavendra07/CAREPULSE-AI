@@ -71,6 +71,7 @@ export interface TelemetryTick {
   news2: NEWS2Score;
   personalized: PersonalizedInsight;
   suggested_specialty?: SuggestedSpecialty;
+  routed_alert?: any;
   fhir_observation_id: string;
 }
 
