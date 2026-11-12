@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from app.api import (
     routes_alerts,
+    routes_evaluation,
     routes_fhir,
     routes_ml,
     routes_patients,
@@ -165,6 +166,7 @@ app.include_router(routes_ml.router)
 app.include_router(routes_scenarios.router)
 app.include_router(routes_report.router)
 app.include_router(routes_fhir.router)
+app.include_router(routes_evaluation.router)
 
 
 class SpeedUpdate(BaseModel):

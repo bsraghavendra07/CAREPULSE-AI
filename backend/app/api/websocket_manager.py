@@ -15,6 +15,7 @@ from app.core.artifact_detector import ArtifactDetector, SQIResult
 from app.core.news2 import NEWS2Result, calculate_news2
 from app.core.specialty_recommender import recommend_specialty, SuggestedSpecialtyResult
 from app.core.specialist_router import route_clinical_alert, RoutedAlert
+from app.core.cds_alert_generator import cds_alert_generator, CDSAlert
 from app.core.sms_dispatcher import dispatch_emergency_sms, analyze_situation_criticality
 from app.core.personalized import PersonalizedEngine, PersonalizedResult
 from app.ml.isolation_forest_model import isolation_forest_service
@@ -175,9 +176,13 @@ class TelemetryManager:
                 vitals = self.scenario_engine.apply(pid, vitals, self.tick_number)
 
                 # 4. Artifact detection
-                motion_injected = vitals.get("_motion_injected", False)
+                motion_injected = vitals.get("_motion_injected", False) or vitals.get("motion_injected", False)
                 sqi_result: SQIResult = self._artifact_detector.evaluate(
-                    vitals, self._prev_vitals.get(pid), motion_injected
+                    vitals,
+                    self._prev_vitals.get(pid),
+                    motion_injected,
+                    patient_id=pid,
+                    current_tick=self.tick_number,
                 )
                 self._prev_vitals[pid] = dict(vitals)
 
@@ -246,6 +251,17 @@ class TelemetryManager:
                     decision_specialty=specialty_result.suggested_specialty if specialty_result.is_applicable else None,
                 )
 
+                # 6.65 Step 8 — Clinical Decision Support (CDS) Alert Generation (WATCH, REVIEW, URGENT)
+                cds_alert = cds_alert_generator.evaluate_vitals(
+                    patient_id=pid,
+                    patient_name=profile.get("name", pid),
+                    vitals=vitals,
+                    sqi_result=sqi_result,
+                    scale2_prescribed=scale2,
+                    news2_score=news2_result.total_score,
+                    current_tick=self.tick_number,
+                )
+
                 # 6.7 Unsupervised Physiological Anomaly Detection (Isolation Forest)
                 ml_anomaly = isolation_forest_service.predict_observation({
                     "heart_rate": _extract_value(vitals, "heart_rate"),
@@ -309,7 +325,15 @@ class TelemetryManager:
                         "artifact_detected": sqi_result.artifact_detected,
                         "motion_injected": sqi_result.motion_injected,
                         "note": sqi_result.note,
+                        "is_unreliable": sqi_result.is_unreliable,
+                        "artifact_type": sqi_result.artifact_type.value,
+                        "affected_vital": sqi_result.affected_vital,
+                        "unreliable_reason": sqi_result.unreliable_reason,
+                        "original_reading": sqi_result.original_reading,
+                        "suppress_critical_alert": sqi_result.suppress_critical_alert,
+                        "traceable_history": sqi_result.traceable_history,
                     },
+                    "cds_alert": cds_alert.model_dump() if cds_alert else None,
                     "news2": _news2_to_dict(news2_result),
                     "suggested_specialty": specialty_result.model_dump(),
                     "routed_alert": routed_alert.model_dump() if routed_alert else None,

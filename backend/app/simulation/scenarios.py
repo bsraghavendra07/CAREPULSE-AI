@@ -41,6 +41,9 @@ _SCENARIO_TARGETS: dict[str, dict] = {
     "motion_artifact": {
         # Special handling — injects erratic spikes and motion flag
     },
+    "isolated_spo2_dip": {
+        # Special handling — exact user example: 98 -> 97 -> 96 -> 70 -> 97 -> 98
+    },
     "sensor_disconnect": {
         # Special handling — flatline then zero
     },
@@ -148,6 +151,16 @@ class ScenarioEngine:
                     _set_val(result, k_hr, max(30, min(200, cur_hr + random.uniform(-30, 40))))
             else:
                 result["motion_injected"] = False
+
+        elif name == "isolated_spo2_dip":
+            # Exact clinical example: 98 -> 97 -> 96 -> 70 -> 97 -> 98
+            k_spo2, _ = _get_val(result, "spo2", "oxygen_saturation")
+            if k_spo2:
+                pattern = [98.0, 97.0, 96.0, 70.0, 97.0, 98.0]
+                idx = min(elapsed, len(pattern) - 1)
+                _set_val(result, k_spo2, pattern[idx])
+                if pattern[idx] == 70.0:
+                    result["motion_injected"] = True
 
         elif name == "sensor_disconnect":
             if progress < 0.5:

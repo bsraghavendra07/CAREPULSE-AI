@@ -1,5 +1,5 @@
 import { PatientProfile } from '../types/patient';
-import { PerformanceReport } from '../types/telemetry';
+import { PerformanceReport, PerformanceBenchmarkReport, CDSAlert } from '../types/telemetry';
 import { FHIRBundle } from '../types/fhir';
 import { RoutedAlert, AlertStats } from '../types/alert';
 import { SMSAlertRecord, SMSGatewayConfig, SendTestSMSPayload } from '../types/sms';
@@ -177,6 +177,28 @@ export async function simulateCriticalDeterioration(payload: {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Failed to simulate critical deterioration: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchBenchmarkReport(): Promise<PerformanceBenchmarkReport> {
+  const res = await fetch(`${API_BASE}/evaluation/benchmark`);
+  if (!res.ok) throw new Error(`Failed to fetch benchmark report: ${res.statusText}`);
+  return res.json();
+}
+
+export async function rerunBenchmark(): Promise<PerformanceBenchmarkReport> {
+  const res = await fetch(`${API_BASE}/evaluation/run-benchmark`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error(`Failed to rerun benchmark: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchCdsAlerts(patientId?: string): Promise<CDSAlert[]> {
+  const url = patientId ? `${API_BASE}/evaluation/cds-alerts?patient_id=${patientId}` : `${API_BASE}/evaluation/cds-alerts`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch CDS alerts: ${res.statusText}`);
   return res.json();
 }
 

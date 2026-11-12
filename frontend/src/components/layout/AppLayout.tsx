@@ -180,7 +180,7 @@ export function AppLayout({
                 <span>Deterioration Tests</span>
               </div>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-purple-600 text-white">
-                6
+                7
               </span>
             </NavLink>
           </div>

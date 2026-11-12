@@ -397,6 +397,8 @@ export function DashboardPage({
                   const news2 = tick?.news2;
                   const vitals = tick?.vitals;
                   const specialty = tick?.suggested_specialty || news2?.suggested_specialty;
+                  const cds = tick?.cds_alert;
+                  const sqi = tick?.signal_quality;
 
                   let statusPill = (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#122b1f] text-[#4ade80] border border-[#1f4a35]">
@@ -405,20 +407,34 @@ export function DashboardPage({
                   );
                   let barColor = 'bg-[#10b981]';
 
-                  if (news2?.risk_level === 'HIGH' || news2?.has_red_score) {
+                  if (sqi?.is_unreliable) {
                     statusPill = (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#331414] text-[#f87171] border border-[#521b1b]">
-                        Critical
-                      </span>
-                    );
-                    barColor = 'bg-[#ef4444]';
-                  } else if (news2?.risk_level === 'MEDIUM') {
-                    statusPill = (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#332412] text-[#fbbf24] border border-[#543b18]">
-                        Monitoring
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40" title={sqi.unreliable_reason || 'Artifact detected'}>
+                        ⚠️ {sqi.artifact_type || 'Artifact'}
                       </span>
                     );
                     barColor = 'bg-[#f59e0b]';
+                  } else if (cds?.alert_level === 'URGENT' || news2?.risk_level === 'HIGH' || news2?.has_red_score) {
+                    statusPill = (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#331414] text-[#f87171] border border-[#521b1b] animate-pulse" title={cds?.explanation || 'Critical deterioration'}>
+                        URGENT
+                      </span>
+                    );
+                    barColor = 'bg-[#ef4444]';
+                  } else if (cds?.alert_level === 'REVIEW' || news2?.risk_level === 'MEDIUM') {
+                    statusPill = (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#332412] text-[#fbbf24] border border-[#543b18]" title={cds?.explanation || 'Clinical review recommended'}>
+                        REVIEW
+                      </span>
+                    );
+                    barColor = 'bg-[#f59e0b]';
+                  } else if (cds?.alert_level === 'WATCH') {
+                    statusPill = (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30" title={cds?.explanation || 'Mild trend monitoring'}>
+                        WATCH
+                      </span>
+                    );
+                    barColor = 'bg-[#38bdf8]';
                   }
 
                   const hrVal = vitals?.heart_rate?.value !== undefined ? String(vitals.heart_rate.value) : p.baseline.heart_rate;

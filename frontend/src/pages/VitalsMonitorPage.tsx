@@ -23,6 +23,7 @@ import {
   Waves,
 } from 'lucide-react';
 import { ProvenanceBadge } from '../components/patient-detail/ProvenanceBadge';
+import { ArtifactDetectionPanel } from '../components/alerts/ArtifactDetectionPanel';
 
 interface VitalsMonitorPageProps {
   patients: PatientProfile[];
@@ -287,6 +288,13 @@ export function VitalsMonitorPage({
           </div>
         </div>
       </div>
+
+      {/* Step 7 & 8: Artifact Detection & Clinical Decision Support Panel */}
+      <ArtifactDetectionPanel
+        patientId={selectedPatientId}
+        patientName={selectedPatient?.name || 'Patient'}
+        tick={tick}
+      />
 
       {/* Main Real-Time Telemetry Graph */}
       <div className="rounded-2xl border border-[#1a1f2c] bg-[#10141e] p-5 space-y-4">
