@@ -70,3 +70,4 @@ async def verify_firebase_token(
             detail=f"Invalid or expired Firebase ID token: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
