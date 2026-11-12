@@ -13,6 +13,9 @@ import {
   Search,
   Heart,
   Activity,
+  LogOut,
+  UserCheck,
+  ChevronRight,
   X,
 } from 'lucide-react';
 import { News2ScorePanel } from '../patient-detail/News2ScorePanel';
@@ -20,6 +23,55 @@ import { PersonalizedPanel } from '../patient-detail/PersonalizedPanel';
 import { ArtifactBanner } from '../patient-detail/ArtifactBanner';
 import { VitalsChart } from '../patient-detail/VitalsChart';
 import { clearScenario } from '../../lib/api';
+
+export interface ClinicianProfile {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  ward: string;
+  initials: string;
+  avatarColor: string;
+}
+
+export const CLINICIANS: ClinicianProfile[] = [
+  {
+    id: 'dr-rivera',
+    name: 'Dr. Rivera',
+    role: 'Cardiologist',
+    department: 'Cardiology & Heart Failure Post-Discharge',
+    ward: 'Ward 4B',
+    initials: 'DR',
+    avatarColor: 'from-emerald-600 to-teal-500',
+  },
+  {
+    id: 'dr-thorne',
+    name: 'Dr. Aris Thorne',
+    role: 'Pulmonologist',
+    department: 'Respiratory Medicine & COPD Surveillance',
+    ward: 'Ward 3A',
+    initials: 'AT',
+    avatarColor: 'from-sky-600 to-blue-500',
+  },
+  {
+    id: 'dr-jenkins',
+    name: 'Dr. Sarah Jenkins',
+    role: 'Critical Care Specialist',
+    department: 'Acute Deterioration & Outreach Team',
+    ward: 'ICU Stepdown',
+    initials: 'SJ',
+    avatarColor: 'from-purple-600 to-indigo-500',
+  },
+  {
+    id: 'dr-vance',
+    name: 'Dr. Marcus Vance',
+    role: 'General Physician',
+    department: 'Post-Surgical Inpatient & Step-Down Care',
+    ward: 'Ward 5C',
+    initials: 'MV',
+    avatarColor: 'from-amber-600 to-orange-500',
+  },
+];
 
 interface AppLayoutProps {
   patients: PatientProfile[];
@@ -43,6 +95,9 @@ export function AppLayout({
   onClosePatientModal,
 }: AppLayoutProps) {
   const [resetToast, setResetToast] = useState<string | null>(null);
+  const [currentClinician, setCurrentClinician] = useState<ClinicianProfile>(CLINICIANS[0]);
+  const [showClinicianModal, setShowClinicianModal] = useState(false);
+  const [isLoggedOut, setIsLoggedOut] = useState(false);
 
   const handleClearScenario = async (pid: string) => {
     try {
@@ -171,17 +226,36 @@ export function AppLayout({
           </div>
         </div>
 
-        {/* Bottom Profile Bar */}
-        <div className="flex items-center space-x-3 border-t border-[#1a1f2c] pt-4 px-1">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
-            DR
-          </div>
-          <div className="leading-tight">
-            <div className="text-xs font-semibold text-slate-100 flex items-center space-x-1">
-              <span>Dr. Rivera</span>
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            </div>
-            <div className="text-[10px] text-slate-400">Cardiologist · CAREPULSE Auth</div>
+        {/* Bottom Profile Bar & Clinician Switcher */}
+        <div className="border-t border-[#1a1f2c] pt-4 px-1">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setShowClinicianModal(true)}
+              className="flex items-center space-x-3 text-left hover:opacity-85 transition-opacity group"
+              title="Click to Switch Clinician"
+            >
+              <div className={`h-8 w-8 rounded-full bg-gradient-to-tr ${currentClinician.avatarColor} flex items-center justify-center text-white font-bold text-xs shadow-sm ring-1 ring-white/10`}>
+                {currentClinician.initials}
+              </div>
+              <div className="leading-tight">
+                <div className="text-xs font-semibold text-slate-100 flex items-center space-x-1 group-hover:text-emerald-300">
+                  <span>{currentClinician.name}</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                </div>
+                <div className="text-[10px] text-slate-400">{currentClinician.role} · Switch</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setIsLoggedOut(true);
+                setShowClinicianModal(true);
+              }}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+              title="Log Out / Change Doctor"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </aside>
@@ -194,8 +268,9 @@ export function AppLayout({
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
           <div>
             <div className="flex items-center space-x-3">
-              <h1 className="text-xl font-bold tracking-tight text-white">
-                Good afternoon, Dr. Rivera ✳
+              <h1 className="text-xl font-bold tracking-tight text-white flex items-center space-x-2">
+                <span>Good afternoon, {currentClinician.name}</span>
+                <span className="text-emerald-400">✳</span>
               </h1>
               <div className="flex items-center space-x-1.5 rounded-full bg-[#122b1f] border border-[#1b4332] px-3 py-1 text-[11px] font-medium text-[#4ade80]">
                 <span className="h-2 w-2 rounded-full bg-[#4ade80] animate-pulse" />
@@ -203,7 +278,7 @@ export function AppLayout({
               </div>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Thursday, 12 November 2026 · Ward 4B — Post-Discharge Continuous Telemetry
+              Thursday, 12 November 2026 · {currentClinician.ward} — {currentClinician.department}
             </p>
           </div>
 
@@ -310,6 +385,105 @@ export function AppLayout({
               patient={selectedPatientModal}
               history={telemetryHistory[selectedPatientModal.id] || []}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          4. CAREPULSE CLINICIAN LOGIN / SWITCH MODAL
+      ───────────────────────────────────────────────────────────── */}
+      {showClinicianModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="relative w-full max-w-lg rounded-2xl border border-[#232b3b] bg-[#0c1017] p-6 shadow-2xl text-slate-100 space-y-5">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#1a1f2c] pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30">
+                  <Activity className="h-5 w-5 text-emerald-400 animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white flex items-center space-x-2">
+                    <span>CAREPULSE 1.0</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">AUTH</span>
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    {isLoggedOut ? 'Clinician Logged Out · Select an authorized doctor to sign in' : 'Switch Active Clinician & Specialty'}
+                  </p>
+                </div>
+              </div>
+
+              {!isLoggedOut && (
+                <button
+                  onClick={() => setShowClinicianModal(false)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-[#1a202c] hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+
+            {/* Clinician Profile Selector Cards */}
+            <div className="space-y-2.5">
+              <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-1">
+                Authorized Hospital Clinicians ({CLINICIANS.length})
+              </div>
+
+              {CLINICIANS.map((doc) => {
+                const isCurrent = doc.id === currentClinician.id && !isLoggedOut;
+
+                return (
+                  <button
+                    key={doc.id}
+                    onClick={() => {
+                      setCurrentClinician(doc);
+                      setIsLoggedOut(false);
+                      setShowClinicianModal(false);
+                      setResetToast(`Successfully authenticated as ${doc.name} (${doc.role})`);
+                      setTimeout(() => setResetToast(null), 3500);
+                    }}
+                    className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                      isCurrent
+                        ? 'bg-emerald-500/10 border-emerald-500/40 shadow-inner'
+                        : 'bg-[#11151f] border-[#1e2433] hover:border-slate-600 hover:bg-[#151a26]'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3.5">
+                      <div className={`h-10 w-10 rounded-full bg-gradient-to-tr ${doc.avatarColor} flex items-center justify-center text-white font-bold text-sm shadow-md`}>
+                        {doc.initials}
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-white flex items-center space-x-2">
+                          <span>{doc.name}</span>
+                          {isCurrent && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-semibold">
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-emerald-400 font-medium">{doc.role}</div>
+                        <div className="text-[11px] text-slate-400">{doc.department} · {doc.ward}</div>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex items-center space-x-1.5 text-xs font-semibold">
+                      <span className={isCurrent ? 'text-emerald-400' : 'text-slate-400'}>
+                        {isCurrent ? 'Signed In' : 'Sign In'}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-slate-400" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Bottom info */}
+            <div className="pt-2 border-t border-[#1a1f2c] flex items-center justify-between text-[11px] text-slate-500">
+              <span className="flex items-center space-x-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span>Ward 4B, 3A & Step-Down Access Granted</span>
+              </span>
+              <span>CAREPULSE Security v1.0</span>
+            </div>
           </div>
         </div>
       )}
