@@ -16,6 +16,7 @@ from app.core.news2 import NEWS2Result, calculate_news2
 from app.core.specialty_recommender import recommend_specialty, SuggestedSpecialtyResult
 from app.core.specialist_router import route_clinical_alert, RoutedAlert
 from app.core.personalized import PersonalizedEngine, PersonalizedResult
+from app.ml.isolation_forest_model import isolation_forest_service
 from app.fhir.local_store import LocalFHIRStore
 from app.fhir.mapper import create_observation, _UNITS
 from app.simulation.bidmc_replayer import BIDMCReplayer
@@ -244,6 +245,13 @@ class TelemetryManager:
                     decision_specialty=specialty_result.suggested_specialty if specialty_result.is_applicable else None,
                 )
 
+                # 6.7 Unsupervised Physiological Anomaly Detection (Isolation Forest)
+                ml_anomaly = isolation_forest_service.predict_observation({
+                    "heart_rate": _extract_value(vitals, "heart_rate"),
+                    "oxygen_saturation": _extract_value(vitals, "oxygen_saturation"),
+                    "respiratory_rate": _extract_value(vitals, "respiratory_rate"),
+                })
+
                 # 7. FHIR Observation (store locally)
                 now_iso = datetime.now(timezone.utc).isoformat()
                 obs_id: str | None = None
@@ -274,6 +282,7 @@ class TelemetryManager:
                     "news2": _news2_to_dict(news2_result),
                     "suggested_specialty": specialty_result.model_dump(),
                     "routed_alert": routed_alert.model_dump() if routed_alert else None,
+                    "ml_anomaly": ml_anomaly.model_dump(),
                     "personalized": _pers_to_dict(pers_result),
                     "fhir_observation_id": obs_id,
                 }
@@ -342,6 +351,12 @@ class TelemetryManager:
             tick_number=self.tick_number,
         )
 
+        ml_anomaly = isolation_forest_service.predict_observation({
+            "heart_rate": _extract_value(vitals, "heart_rate"),
+            "oxygen_saturation": _extract_value(vitals, "oxygen_saturation"),
+            "respiratory_rate": _extract_value(vitals, "respiratory_rate"),
+        })
+
         now_iso = datetime.now(timezone.utc).isoformat()
         payload = {
             "timestamp": now_iso,
@@ -357,6 +372,7 @@ class TelemetryManager:
             },
             "news2": _news2_to_dict(news2_result),
             "routed_alert": routed_alert.model_dump() if routed_alert else None,
+            "ml_anomaly": ml_anomaly.model_dump(),
             "personalized": _pers_to_dict(pers_result),
             "fhir_observation_id": obs_id,
         }

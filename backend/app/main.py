@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from app.api import (
     routes_alerts,
     routes_fhir,
+    routes_ml,
     routes_patients,
     routes_report,
     routes_scenarios,
@@ -23,6 +24,7 @@ from app.api import (
 )
 from app.api.websocket_manager import TelemetryManager
 from app.core.specialist_router import categorize_patient
+from app.ml.isolation_forest_model import initialize_ml_model
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -107,6 +109,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Initialise simulation & scoring engines
     telemetry_manager.init_engines(patients)
 
+    # Initialise & train Unsupervised Isolation Forest model on BIDMC telemetry
+    bidmc_csv_path = Path(__file__).resolve().parent / "data" / "bidmc" / "bidmc_sample_vitals.csv"
+    initialize_ml_model(bidmc_csv_path)
+
     # Inject dependencies into routes
     routes_patients.set_patients(patients)
     routes_telemetry.set_manager(telemetry_manager)
@@ -152,6 +158,7 @@ app.add_middleware(
 app.include_router(routes_patients.router)
 app.include_router(routes_telemetry.router)
 app.include_router(routes_alerts.router)
+app.include_router(routes_ml.router)
 app.include_router(routes_scenarios.router)
 app.include_router(routes_report.router)
 app.include_router(routes_fhir.router)

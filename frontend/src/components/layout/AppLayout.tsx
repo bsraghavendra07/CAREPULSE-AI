@@ -341,6 +341,7 @@ export function AppLayout({
               />
               <PersonalizedPanel
                 personalized={latestTicks[selectedPatientModal.id]?.personalized}
+                mlAnomaly={latestTicks[selectedPatientModal.id]?.ml_anomaly}
                 patient={selectedPatientModal}
               />
             </div>
