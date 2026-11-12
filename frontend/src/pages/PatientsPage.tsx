@@ -34,7 +34,6 @@ const PATIENT_MEDICATIONS: Record<string, string[]> = {
   'P-005': ['Enoxaparin 40mg SC daily', 'Celecoxib 200mg daily', 'Acetaminophen 1g PRN'],
 };
 
-// Feature 1 & 2: Helper for Assigned Department and Specialist Categorisation
 export const getSpecialistInfo = (p: PatientProfile) => {
   if (p.department && p.specialist_name) {
     return {
@@ -58,74 +57,61 @@ export const getSpecialistInfo = (p: PatientProfile) => {
       specialistTitle: 'Consultant Pulmonologist & Respiratory Lead',
     };
   }
-  if (cond.includes('sepsis') || cond.includes('abdominal')) {
+  if (cond.includes('sepsis') || cond.includes('infection') || cond.includes('abdominal')) {
     return {
       department: 'General Medicine / Critical Care',
       specialistName: 'Dr. Marcus Vance, MD',
-      specialistTitle: 'Consultant in Internal & Critical Care Medicine',
+      specialistTitle: 'Critical Care & Infectious Disease Specialist',
     };
   }
-  if (cond.includes('arthroplasty') || cond.includes('orthopedic') || cond.includes('surgical')) {
+  if (cond.includes('post-op') || cond.includes('arthroplasty') || cond.includes('ortho')) {
     return {
       department: 'Surgical Care / Orthopedics',
       specialistName: 'Dr. Julian Hayes, MD, FRCS',
-      specialistTitle: 'Consultant Orthopedic & Post-Operative Surgeon',
+      specialistTitle: 'Attending Orthopedic Surgeon',
     };
   }
   return {
-    department: 'General Medicine / Critical Care',
-    specialistName: 'Dr. Robert Rivera, MD',
-    specialistTitle: 'General Attending Clinician',
+    department: 'General Inpatient Care',
+    specialistName: 'Dr. Sarah Jenkins, MD',
+    specialistTitle: 'Hospitalist & Primary Post-Discharge Physician',
   };
 };
 
 export const getDepartmentConfig = (dept: string) => {
-  if (dept.includes('Cardiology')) {
+  const d = dept.toLowerCase();
+  if (d.includes('cardio')) {
     return {
       icon: Heart,
-      color: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-      badgeColor: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+      color: 'text-[#EF4444] bg-red-50 border-red-200',
+      badgeColor: 'bg-red-50 text-red-700 border-red-200',
     };
   }
-  if (dept.includes('Pulmonology')) {
+  if (d.includes('pulmon') || d.includes('resp')) {
     return {
       icon: Wind,
-      color: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
-      badgeColor: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
+      color: 'text-[#4A90E2] bg-blue-50 border-blue-200',
+      badgeColor: 'bg-[#D9F0FF] text-[#4A90E2] border-[#4A90E2]/30',
     };
   }
-  if (dept.includes('Critical Care') || dept.includes('General Medicine')) {
+  if (d.includes('critical') || d.includes('infectious') || d.includes('general med')) {
     return {
-      icon: Activity,
-      color: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-      badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+      icon: ShieldAlert,
+      color: 'text-[#F59E0B] bg-amber-50 border-amber-200',
+      badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
     };
   }
-  if (dept.includes('Surgical') || dept.includes('Orthopedic')) {
-    return {
-      icon: Stethoscope,
-      color: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
-      badgeColor: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-    };
-  }
-  if (dept.includes('Neurology')) {
-    return {
-      icon: Brain,
-      color: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-      badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
-    };
-  }
-  if (dept.includes('Nephrology')) {
+  if (d.includes('surg') || d.includes('ortho')) {
     return {
       icon: Droplets,
-      color: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-      badgeColor: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+      color: 'text-[#4A90E2] bg-[#F0F7FF] border-[#E5E7EB]',
+      badgeColor: 'bg-[#F0F7FF] text-[#4A90E2] border-[#E5E7EB]',
     };
   }
   return {
     icon: Stethoscope,
-    color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    badgeColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    color: 'text-[#10B981] bg-emerald-50 border-emerald-200',
+    badgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   };
 };
 
@@ -167,15 +153,15 @@ export function PatientsPage({
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#1a1f2c] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8E4DA] pb-4">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center space-x-2.5">
-            <Users className="h-5 w-5 text-emerald-400" />
+          <h2 className="text-xl font-black text-[#111827] tracking-tight flex items-center space-x-2.5">
+            <Users className="h-5 w-5 text-[#111111]" />
             <span>Post-Discharge Patient Cohort</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[#6B7280] mt-1">
             Active ward population under continuous physiological surveillance and NEWS2 evaluation
           </p>
         </div>
@@ -183,43 +169,43 @@ export function PatientsPage({
         {/* Search & Filters */}
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Search className="absolute left-3.5 top-2.5 h-3.5 w-3.5 text-[#9CA3AF]" />
             <input
               type="text"
               placeholder="Search by name, ID or diagnosis..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 w-64 rounded-xl border border-[#1e2433] bg-[#11151f] pl-9 pr-3 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="h-9 w-64 rounded-full border border-[#E8E4DA] bg-white pl-9 pr-3 text-xs text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-1 focus:ring-[#111111] shadow-sm"
             />
           </div>
 
-          <div className="flex items-center space-x-1 bg-[#11151f] border border-[#1e2433] p-1 rounded-xl text-xs">
+          <div className="flex items-center space-x-1 bg-[#EFECE4] border border-[#E8E4DA] p-1 rounded-full text-xs shadow-sm">
             <button
               onClick={() => setFilterCondition('all')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
                 filterCondition === 'all'
-                  ? 'bg-emerald-500 text-black font-bold'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#111111] text-white shadow-sm'
+                  : 'text-[#6B7280] hover:text-[#111827]'
               }`}
             >
               All (5)
             </button>
             <button
               onClick={() => setFilterCondition('scale2')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
                 filterCondition === 'scale2'
-                  ? 'bg-emerald-500 text-black font-bold'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#111111] text-white shadow-sm'
+                  : 'text-[#6B7280] hover:text-[#111827]'
               }`}
             >
               Scale 2 (COPD)
             </button>
             <button
               onClick={() => setFilterCondition('cardiac')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
                 filterCondition === 'cardiac'
-                  ? 'bg-emerald-500 text-black font-bold'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#111111] text-white shadow-sm'
+                  : 'text-[#6B7280] hover:text-[#111827]'
               }`}
             >
               Cardiac
@@ -249,25 +235,25 @@ export function PatientsPage({
           const DeptIcon = deptCfg.icon;
 
           let tierBadge = (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#122b1f] text-[#4ade80] border border-[#1f4a35]">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
               ROUTINE
             </span>
           );
           if (tier === 'URGENT' || news2?.has_red_score) {
             tierBadge = (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#331414] text-[#f87171] border border-[#521b1b] animate-pulse">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-200 animate-pulse">
                 URGENT (RED)
               </span>
             );
           } else if (tier === 'REVIEW') {
             tierBadge = (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#332412] text-[#fbbf24] border border-[#543b18]">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                 REVIEW
               </span>
             );
           } else if (tier === 'WATCH') {
             tierBadge = (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#292212] text-[#eab308] border border-[#4d3e18]">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-yellow-50 text-yellow-800 border border-yellow-200">
                 WATCH
               </span>
             );
@@ -277,24 +263,24 @@ export function PatientsPage({
             <div
               key={p.id}
               onClick={() => onSelectPatient(p)}
-              className="rounded-2xl border border-[#1a1f2c] bg-[#10141e] p-5 hover:border-emerald-500/50 hover:bg-[#131825] cursor-pointer transition-all flex flex-col justify-between group shadow-sm"
+              className="rounded-3xl border border-[#E8E4DA] bg-white p-6 hover:border-[#111111]/40 cursor-pointer transition-all flex flex-col justify-between group shadow-sm hover:shadow-md"
             >
               <div className="space-y-4">
                 {/* Top card row */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="h-10 w-10 rounded-xl bg-[#151c2a] border border-[#232f47] flex items-center justify-center font-bold text-white text-sm group-hover:border-emerald-500/40">
+                    <div className="h-10 w-10 rounded-2xl bg-[#EFECE4] text-[#111111] flex items-center justify-center font-bold text-sm">
                       {p.name.split(' ').map((n) => n[0]).join('')}
                     </div>
                     <div>
-                      <h3 className="font-bold text-white text-sm group-hover:text-emerald-400 transition-colors">
+                      <h3 className="font-bold text-[#111827] text-sm group-hover:underline transition-colors">
                         {p.name}
                       </h3>
-                      <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
-                        <span>#{p.id}</span>
-                        <span>•</span>
+                      <div className="flex items-center space-x-2 text-[10px] text-[#6B7280] font-mono">
+                        <span className="font-bold text-[#111827]">#{p.id}</span>
+                        <span>&bull;</span>
                         <span>{p.gender.toUpperCase()}</span>
-                        <span>•</span>
+                        <span>&bull;</span>
                         <span>{age} yrs</span>
                       </div>
                     </div>
@@ -303,74 +289,74 @@ export function PatientsPage({
                 </div>
 
                 {/* Condition & Scale 2 note */}
-                <div className="rounded-xl bg-[#0c1017] border border-[#1a1f2c] p-2.5 space-y-1">
-                  <div className="text-[11px] font-semibold text-slate-200">{p.condition}</div>
-                  <div className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">
+                <div className="rounded-2xl bg-[#EFECE4] border border-[#E8E4DA] p-3 space-y-1">
+                  <div className="text-xs font-bold text-[#111827]">{p.condition}</div>
+                  <div className="text-[11px] text-[#6B7280] line-clamp-2 leading-relaxed">
                     {p.riskSummary}
                   </div>
                   {p.scale2_prescribed && (
-                    <div className="pt-1 flex items-center space-x-1.5 text-[10px] font-bold text-pink-400">
-                      <span className="h-1.5 w-1.5 rounded-full bg-pink-400" />
+                    <div className="pt-1 flex items-center space-x-1.5 text-[10px] font-bold text-[#111827]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#111111]" />
                       <span>NEWS2 Scale 2 Prescribed (88–92% target)</span>
                     </div>
                   )}
                 </div>
 
-                {/* Feature 2: Assigned Department & Specialist */}
-                <div className="rounded-xl bg-[#0c1017] border border-[#1a1f2c] p-2.5 flex items-center justify-between">
+                {/* Assigned Department & Specialist */}
+                <div className="rounded-2xl bg-white border border-[#E8E4DA] p-3 flex items-center justify-between shadow-sm">
                   <div className="flex items-center space-x-2.5 overflow-hidden pr-2">
-                    <div className={`p-1.5 rounded-lg border ${deptCfg.color} shrink-0`}>
+                    <div className={`p-1.5 rounded-xl border ${deptCfg.color} shrink-0`}>
                       <DeptIcon className="h-4 w-4" />
                     </div>
                     <div className="truncate">
-                      <div className="text-[11px] font-bold text-white truncate">
+                      <div className="text-xs font-bold text-[#111827] truncate">
                         {specInfo.specialistName}
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                      <div className="text-[10px] text-[#6B7280] truncate mt-0.5">
                         {specInfo.specialistTitle}
                       </div>
                     </div>
                   </div>
-                  <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${deptCfg.badgeColor} shrink-0 whitespace-nowrap`}>
+                  <div className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${deptCfg.badgeColor} shrink-0 whitespace-nowrap`}>
                     {specInfo.department}
                   </div>
                 </div>
 
                 {/* Vitals Grid */}
                 <div className="grid grid-cols-4 gap-2 text-center">
-                  <div className="rounded-lg bg-[#141924] p-1.5 border border-[#1f2638]">
-                    <div className="text-[9px] uppercase text-slate-400">Heart Rate</div>
-                    <div className="font-mono font-bold text-xs text-emerald-400 mt-0.5">{hr}</div>
-                    <div className="text-[9px] text-slate-500">bpm</div>
+                  <div className="rounded-xl bg-[#F0F7FF] p-2 border border-[#E5E7EB]">
+                    <div className="text-[10px] uppercase font-semibold text-[#4B5563]">Heart Rate</div>
+                    <div className="font-mono font-bold text-xs text-[#111827] mt-0.5">{hr}</div>
+                    <div className="text-[9px] text-[#4B5563]">bpm</div>
                   </div>
-                  <div className="rounded-lg bg-[#141924] p-1.5 border border-[#1f2638]">
-                    <div className="text-[9px] uppercase text-slate-400">SpO₂</div>
-                    <div className="font-mono font-bold text-xs text-teal-400 mt-0.5">{spo2}</div>
-                    <div className="text-[9px] text-slate-500">%</div>
+                  <div className="rounded-xl bg-[#F0F7FF] p-2 border border-[#E5E7EB]">
+                    <div className="text-[10px] uppercase font-semibold text-[#4B5563]">SpO₂</div>
+                    <div className="font-mono font-bold text-xs text-[#4A90E2] mt-0.5">{spo2}</div>
+                    <div className="text-[9px] text-[#4B5563]">%</div>
                   </div>
-                  <div className="rounded-lg bg-[#141924] p-1.5 border border-[#1f2638]">
-                    <div className="text-[9px] uppercase text-slate-400">Resp Rate</div>
-                    <div className="font-mono font-bold text-xs text-sky-400 mt-0.5">{rr}</div>
-                    <div className="text-[9px] text-slate-500">/min</div>
+                  <div className="rounded-xl bg-[#F0F7FF] p-2 border border-[#E5E7EB]">
+                    <div className="text-[10px] uppercase font-semibold text-[#4B5563]">Resp Rate</div>
+                    <div className="font-mono font-bold text-xs text-[#111827] mt-0.5">{rr}</div>
+                    <div className="text-[9px] text-[#4B5563]">/min</div>
                   </div>
-                  <div className="rounded-lg bg-[#141924] p-1.5 border border-[#1f2638]">
-                    <div className="text-[9px] uppercase text-slate-400">NEWS2</div>
-                    <div className="font-mono font-bold text-xs text-white mt-0.5">{score}</div>
-                    <div className="text-[9px] text-slate-500">pts</div>
+                  <div className="rounded-xl bg-[#F0F7FF] p-2 border border-[#E5E7EB]">
+                    <div className="text-[10px] uppercase font-semibold text-[#4B5563]">NEWS2</div>
+                    <div className="font-mono font-bold text-xs text-[#111827] mt-0.5">{score}</div>
+                    <div className="text-[9px] text-[#4B5563]">pts</div>
                   </div>
                 </div>
 
                 {/* Medications List */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center space-x-1.5 text-[10px] font-semibold text-slate-400">
-                    <Pill className="h-3 w-3 text-emerald-400" />
+                  <div className="flex items-center space-x-1.5 text-xs font-semibold text-[#4B5563]">
+                    <Pill className="h-3.5 w-3.5 text-[#4A90E2]" />
                     <span>Prescribed Discharge Regimen</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {meds.map((m, idx) => (
                       <span
                         key={idx}
-                        className="text-[9px] px-2 py-0.5 rounded-md bg-[#161c28] text-slate-300 border border-[#21293a]"
+                        className="text-[10px] px-2 py-0.5 rounded-md bg-[#F0F7FF] text-[#4B5563] border border-[#E5E7EB]"
                       >
                         {m}
                       </span>
@@ -380,7 +366,7 @@ export function PatientsPage({
               </div>
 
               {/* Bottom Card Footer */}
-              <div className="mt-4 pt-3 border-t border-[#1a1f2c] flex items-center justify-between text-xs text-emerald-400 font-semibold">
+              <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-xs text-[#4A90E2] font-semibold">
                 <span>View Clinical Deep-Dive</span>
                 <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -391,4 +377,3 @@ export function PatientsPage({
     </div>
   );
 }
-

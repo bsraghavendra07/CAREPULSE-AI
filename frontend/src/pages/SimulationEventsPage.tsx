@@ -323,22 +323,22 @@ export function SimulationEventsPage({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* ── HEADER BANNER ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-[#1b2f42] gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-[#E5E7EB] gap-4">
         <div>
           <div className="flex items-center space-x-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#00C48C]/15 border border-[#00C48C]/30 text-[#00C48C]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#4A90E2]/15 border border-[#4A90E2]/30 text-[#4A90E2]">
               <Radio className="h-5 w-5 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-black text-[#111827] tracking-tight">
                   Simulation Events
                 </h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#00C48C]/20 text-[#00C48C] border border-[#00C48C]/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#4A90E2]/20 text-[#4A90E2] border border-[#4A90E2]/30">
                   PS 3.2 WEARABLE SIMULATOR
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-[#4B5563] mt-0.5">
                 Execute and observe the 5 independent wearable events: Drift, Sudden Spikes, Dropouts, Motion Noise, and Probe Removal.
               </p>
             </div>
@@ -347,25 +347,25 @@ export function SimulationEventsPage({
 
         {/* Action Feedback Toast */}
         {actionFeedback && (
-          <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-semibold animate-in fade-in">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+          <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-[#D9F0FF] text-[#4A90E2] border border-[#4A90E2]/30 text-[#4A90E2] text-xs font-semibold animate-in fade-in">
+            <CheckCircle2 className="h-4 w-4 text-[#4A90E2] shrink-0" />
             <span>{actionFeedback}</span>
           </div>
         )}
       </div>
 
       {/* ── TOP SECTION: COMMON CONTROLS & LIVE TELEMETRY PANEL ── */}
-      <div className="rounded-2xl border border-[#1b2f42] bg-[#0c1825]/90 p-5 shadow-xl space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#172535]">
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm p-5 shadow-xl space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#E5E7EB]">
           {/* 1. Patient Selector */}
           <div className="flex items-center space-x-3">
-            <label className="text-xs font-bold text-slate-300 whitespace-nowrap">
+            <label className="text-xs font-bold text-[#4B5563] whitespace-nowrap">
               Target Patient:
             </label>
             <select
               value={selectedPatientId}
               onChange={(e) => setSelectedPatientId(e.target.value)}
-              className="rounded-xl border border-[#23384d] bg-[#09111b] px-3.5 py-2 text-xs font-semibold text-slate-100 focus:border-[#2DD4BF] focus:outline-none"
+              className="rounded-xl border border-[#E5E7EB] bg-[#F0F7FF] px-3.5 py-2 text-xs font-semibold text-[#111827] focus:border-[#4A90E2] focus:outline-none"
             >
               {patients.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -377,7 +377,7 @@ export function SimulationEventsPage({
               <button
                 type="button"
                 onClick={() => onSelectPatient(selectedPatient)}
-                className="text-[11px] text-[#2DD4BF] hover:underline font-medium"
+                className="text-[11px] text-[#4A90E2] hover:underline font-medium"
               >
                 View Profile ➔
               </button>
@@ -386,7 +386,7 @@ export function SimulationEventsPage({
 
           {/* 2. Reading Generation Interval & Speed */}
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-bold text-slate-300">Tick Cadence:</span>
+            <span className="text-xs font-bold text-[#4B5563]">Tick Cadence:</span>
             <div className="grid grid-cols-4 gap-1">
               {[1, 2, 5, 10].map((s) => (
                 <button
@@ -394,8 +394,8 @@ export function SimulationEventsPage({
                   onClick={() => onSpeedChange(s)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
                     speedFactor === s
-                      ? 'bg-[#00C48C] text-slate-950 shadow-md shadow-[#00C48C]/30'
-                      : 'bg-[#132030] text-slate-300 hover:bg-[#1c2e42]'
+                      ? 'bg-[#4A90E2] text-slate-950 shadow-md shadow-[#4A90E2]/30'
+                      : 'bg-[#F0F7FF] text-[#4B5563] hover:bg-[#1c2e42]'
                   }`}
                 >
                   {s}x ({1 / s}s)
@@ -410,8 +410,8 @@ export function SimulationEventsPage({
               onClick={handleTogglePause}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
                 isPaused
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                  : 'bg-amber-600/90 hover:bg-amber-500 text-white'
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-[#111827]'
+                  : 'bg-amber-600/90 hover:bg-amber-500 text-[#111827]'
               }`}
             >
               {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
@@ -420,7 +420,7 @@ export function SimulationEventsPage({
 
             <button
               onClick={handleStopActiveEvent}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#F0F7FF] hover:bg-slate-700 text-[#111827] text-xs font-bold transition-colors"
               title="Stop any running drift, spike, noise or probe detachment"
             >
               <Sliders className="h-3.5 w-3.5 text-rose-400" />
@@ -429,7 +429,7 @@ export function SimulationEventsPage({
 
             <button
               onClick={handleResetAll}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#F0F7FF] hover:bg-slate-700 text-[#111827] text-xs font-bold transition-colors"
               title="Reset all patients to clean Synthea baselines"
             >
               <RotateCcw className="h-3.5 w-3.5 text-cyan-400" />
@@ -441,13 +441,13 @@ export function SimulationEventsPage({
         {/* Live Readings Strip */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
           {/* Heart Rate */}
-          <div className="rounded-xl border border-[#1b2f42] bg-[#09111b] p-3">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold mb-1">
+          <div className="rounded-xl border border-[#E5E7EB] bg-[#F0F7FF] p-3">
+            <div className="flex items-center justify-between text-[11px] text-[#4B5563] font-semibold mb-1">
               <span className="flex items-center space-x-1">
                 <Heart className="h-3 w-3 text-rose-400" />
                 <span>Heart Rate</span>
               </span>
-              <span className="text-[10px] text-slate-500">LOINC 8867-4</span>
+              <span className="text-[10px] text-[#4B5563]">LOINC 8867-4</span>
             </div>
             <div className="flex items-baseline space-x-1">
               <span
@@ -456,25 +456,25 @@ export function SimulationEventsPage({
                     ? 'text-purple-400 text-sm'
                     : hrDisplay.status === 'probe_removed'
                     ? 'text-rose-400 animate-pulse text-sm'
-                    : 'text-white'
+                    : 'text-[#111827]'
                 }`}
               >
                 {hrDisplay.val}
               </span>
               {hrDisplay.status === 'normal' && (
-                <span className="text-[11px] text-slate-400">bpm</span>
+                <span className="text-[11px] text-[#4B5563]">bpm</span>
               )}
             </div>
           </div>
 
           {/* SpO2 */}
-          <div className="rounded-xl border border-[#1b2f42] bg-[#09111b] p-3">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold mb-1">
+          <div className="rounded-xl border border-[#E5E7EB] bg-[#F0F7FF] p-3">
+            <div className="flex items-center justify-between text-[11px] text-[#4B5563] font-semibold mb-1">
               <span className="flex items-center space-x-1">
                 <Wind className="h-3 w-3 text-cyan-400" />
                 <span>SpO₂</span>
               </span>
-              <span className="text-[10px] text-slate-500">LOINC 2708-6</span>
+              <span className="text-[10px] text-[#4B5563]">LOINC 2708-6</span>
             </div>
             <div className="flex items-baseline space-x-1">
               <span
@@ -483,70 +483,70 @@ export function SimulationEventsPage({
                     ? 'text-purple-400 text-sm'
                     : spo2Display.status === 'probe_removed'
                     ? 'text-rose-400 animate-pulse text-sm'
-                    : 'text-white'
+                    : 'text-[#111827]'
                 }`}
               >
                 {spo2Display.val}
               </span>
               {spo2Display.status === 'normal' && (
-                <span className="text-[11px] text-slate-400">%</span>
+                <span className="text-[11px] text-[#4B5563]">%</span>
               )}
             </div>
           </div>
 
           {/* Respiration Rate */}
-          <div className="rounded-xl border border-[#1b2f42] bg-[#09111b] p-3">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold mb-1">
+          <div className="rounded-xl border border-[#E5E7EB] bg-[#F0F7FF] p-3">
+            <div className="flex items-center justify-between text-[11px] text-[#4B5563] font-semibold mb-1">
               <span className="flex items-center space-x-1">
-                <Activity className="h-3 w-3 text-emerald-400" />
+                <Activity className="h-3 w-3 text-[#4A90E2]" />
                 <span>Resp Rate</span>
               </span>
-              <span className="text-[10px] text-slate-500">LOINC 9279-1</span>
+              <span className="text-[10px] text-[#4B5563]">LOINC 9279-1</span>
             </div>
             <div className="flex items-baseline space-x-1">
               <span
                 className={`text-lg sm:text-xl font-mono font-black ${
-                  rrDisplay.status === 'missing' ? 'text-purple-400 text-sm' : 'text-white'
+                  rrDisplay.status === 'missing' ? 'text-purple-400 text-sm' : 'text-[#111827]'
                 }`}
               >
                 {rrDisplay.val}
               </span>
               {rrDisplay.status === 'normal' && (
-                <span className="text-[11px] text-slate-400">/min</span>
+                <span className="text-[11px] text-[#4B5563]">/min</span>
               )}
             </div>
           </div>
 
           {/* Body Temperature */}
-          <div className="rounded-xl border border-[#1b2f42] bg-[#09111b] p-3">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold mb-1">
+          <div className="rounded-xl border border-[#E5E7EB] bg-[#F0F7FF] p-3">
+            <div className="flex items-center justify-between text-[11px] text-[#4B5563] font-semibold mb-1">
               <span className="flex items-center space-x-1">
                 <Thermometer className="h-3 w-3 text-amber-400" />
                 <span>Body Temp</span>
               </span>
-              <span className="text-[10px] text-slate-500">LOINC 8310-5</span>
+              <span className="text-[10px] text-[#4B5563]">LOINC 8310-5</span>
             </div>
             <div className="flex items-baseline space-x-1">
               <span
                 className={`text-lg sm:text-xl font-mono font-black ${
-                  tempDisplay.status === 'missing' ? 'text-purple-400 text-sm' : 'text-white'
+                  tempDisplay.status === 'missing' ? 'text-purple-400 text-sm' : 'text-[#111827]'
                 }`}
               >
                 {tempDisplay.val}
               </span>
               {tempDisplay.status === 'normal' && (
-                <span className="text-[11px] text-slate-400">°C</span>
+                <span className="text-[11px] text-[#4B5563]">°C</span>
               )}
             </div>
           </div>
 
           {/* NEWS2 & Risk Level */}
-          <div className="rounded-xl border border-[#1b2f42] bg-[#09111b] p-3">
-            <div className="text-[11px] text-slate-400 font-semibold mb-1">
+          <div className="rounded-xl border border-[#E5E7EB] bg-[#F0F7FF] p-3">
+            <div className="text-[11px] text-[#4B5563] font-semibold mb-1">
               NEWS2 Score
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-lg sm:text-xl font-mono font-black text-white">
+              <span className="text-lg sm:text-xl font-mono font-black text-[#111827]">
                 {currentTick?.news2?.total_score ?? 0}
               </span>
               <span
@@ -555,7 +555,7 @@ export function SimulationEventsPage({
                     ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                     : currentTick?.news2?.risk_level === 'MEDIUM'
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-[#D9F0FF] text-[#4A90E2] text-[#4A90E2] border border-[#4A90E2]/30'
                 }`}
               >
                 {currentTick?.news2?.risk_level ?? 'LOW'}
@@ -564,8 +564,8 @@ export function SimulationEventsPage({
           </div>
 
           {/* Signal Quality SQI & Active Event */}
-          <div className="rounded-xl border border-[#1b2f42] bg-[#09111b] p-3">
-            <div className="text-[11px] text-slate-400 font-semibold mb-1">
+          <div className="rounded-xl border border-[#E5E7EB] bg-[#F0F7FF] p-3">
+            <div className="text-[11px] text-[#4B5563] font-semibold mb-1">
               Active Simulator Event
             </div>
             <div className="space-y-0.5">
@@ -574,8 +574,8 @@ export function SimulationEventsPage({
                   probeRemoved
                     ? 'text-rose-400 animate-pulse'
                     : activeEventName
-                    ? 'text-[#2DD4BF]'
-                    : 'text-slate-400'
+                    ? 'text-[#4A90E2]'
+                    : 'text-[#4B5563]'
                 }`}
               >
                 {probeRemoved
@@ -584,7 +584,7 @@ export function SimulationEventsPage({
                   ? `${activeEventName} (${activeEvent?.status || 'RUNNING'})`
                   : 'NONE (INACTIVE)'}
               </div>
-              <div className="text-[10px] text-slate-400 flex items-center space-x-1">
+              <div className="text-[10px] text-[#4B5563] flex items-center space-x-1">
                 <span>SQI:</span>
                 <span
                   className={`font-bold ${
@@ -592,7 +592,7 @@ export function SimulationEventsPage({
                       ? 'text-rose-400'
                       : currentTick?.signal_quality?.status === 'MEDIUM'
                       ? 'text-amber-400'
-                      : 'text-emerald-400'
+                      : 'text-[#4A90E2]'
                   }`}
                 >
                   {currentTick?.signal_quality?.status || 'HIGH'} ({currentTick?.signal_quality?.sqi ?? 1.0})
@@ -621,23 +621,23 @@ export function SimulationEventsPage({
         )}
 
         {/* FHIR R4 HAPI Cloud Ingestion Live Sync Action */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-[#172535] text-xs text-slate-400 gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-[#E5E7EB] text-xs text-[#4B5563] gap-2">
           <div className="flex items-center space-x-2">
-            <ShieldCheck className="h-4 w-4 text-[#2DD4BF]" />
+            <ShieldCheck className="h-4 w-4 text-[#4A90E2]" />
             <span>
               All simulated vitals conform to <strong>HL7 FHIR R4</strong> with standard LOINC & UCUM coding.
             </span>
           </div>
           <div className="flex items-center space-x-3">
             {fhirSyncFeedback && (
-              <span className="text-emerald-300 font-mono text-[11px] truncate max-w-xs">
+              <span className="text-[#4A90E2] font-mono text-[11px] truncate max-w-xs">
                 {fhirSyncFeedback}
               </span>
             )}
             <button
               onClick={handleTransmitToFhir}
               disabled={fhirSyncLoading}
-              className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-[#142334] hover:bg-[#1d3148] text-[#2DD4BF] border border-[#2DD4BF]/30 text-xs font-semibold cursor-pointer"
+              className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-[#142334] hover:bg-[#1d3148] text-[#4A90E2] border border-[#4A90E2]/30 text-xs font-semibold cursor-pointer"
             >
               <Send className="h-3 w-3" />
               <span>{fhirSyncLoading ? 'Transmitting...' : 'Ingest to FHIR R4 API'}</span>
@@ -652,7 +652,7 @@ export function SimulationEventsPage({
         {/* ─────────────────────────────────────────────────────────────
             CARD 1: GRADUAL VITAL SIGN DRIFT
         ───────────────────────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-[#1b2f42] bg-[#0c1825]/95 p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-colors">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-colors">
           <div className="space-y-3">
             {/* Header */}
             <div className="flex items-start justify-between">
@@ -661,7 +661,7 @@ export function SimulationEventsPage({
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">1. Gradual Vital Sign Drift</h3>
+                  <h3 className="text-sm font-bold text-[#111827]">1. Gradual Vital Sign Drift</h3>
                   <span className="text-[11px] text-cyan-400 font-mono">Slow physiological progression</span>
                 </div>
               </div>
@@ -669,24 +669,24 @@ export function SimulationEventsPage({
                 className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase font-mono ${
                   driftRunning
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse'
-                    : 'bg-slate-800 text-slate-400'
+                    : 'bg-[#F0F7FF] text-[#4B5563]'
                 }`}
               >
                 {driftRunning ? 'RUNNING' : 'INACTIVE'}
               </span>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-[#4B5563] leading-relaxed">
               Slowly increases or decreases selected vital signs over time to simulate gradual clinical deterioration or slow therapeutic recovery.
             </p>
 
             {/* Vital Sign Selector */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-300">Vital Sign Channel:</label>
+              <label className="text-[11px] font-semibold text-[#4B5563]">Vital Sign Channel:</label>
               <select
                 value={driftVital}
                 onChange={(e) => setDriftVital(e.target.value)}
-                className="w-full rounded-xl border border-[#1d2f42] bg-[#08101a] px-3 py-2 text-xs text-slate-200 focus:border-cyan-400 focus:outline-none"
+                className="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#111827] focus:border-cyan-400 focus:outline-none"
               >
                 <option value="heart_rate">Heart Rate (bpm)</option>
                 <option value="oxygen_saturation">Oxygen Saturation (SpO₂ %)</option>
@@ -698,37 +698,37 @@ export function SimulationEventsPage({
             {/* Config: Starting, Target, Duration */}
             <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className="text-[10px] text-slate-400">Start Val</label>
+                <label className="text-[10px] text-[#4B5563]">Start Val</label>
                 <input
                   type="number"
                   value={driftStart}
                   onChange={(e) => setDriftStart(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-lg border border-[#1d2f42] bg-[#08101a] px-2 py-1.5 text-xs text-slate-100 font-mono text-center"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-xs text-[#111827] font-mono text-center"
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400">Target Val</label>
+                <label className="text-[10px] text-[#4B5563]">Target Val</label>
                 <input
                   type="number"
                   value={driftTarget}
                   onChange={(e) => setDriftTarget(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-lg border border-[#1d2f42] bg-[#08101a] px-2 py-1.5 text-xs text-cyan-300 font-mono text-center font-bold"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-xs text-cyan-300 font-mono text-center font-bold"
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400">Duration (s)</label>
+                <label className="text-[10px] text-[#4B5563]">Duration (s)</label>
                 <input
                   type="number"
                   value={driftDuration}
                   onChange={(e) => setDriftDuration(parseInt(e.target.value, 10) || 10)}
-                  className="w-full rounded-lg border border-[#1d2f42] bg-[#08101a] px-2 py-1.5 text-xs text-slate-100 font-mono text-center"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-xs text-[#111827] font-mono text-center"
                 />
               </div>
             </div>
 
             {/* Quick Presets */}
             <div className="space-y-1">
-              <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Quick Presets:</span>
+              <span className="text-[10px] text-[#4B5563] font-semibold uppercase tracking-wider">Quick Presets:</span>
               <div className="flex flex-wrap gap-1">
                 <button
                   type="button"
@@ -738,7 +738,7 @@ export function SimulationEventsPage({
                     setDriftTarget(125);
                     setDriftDuration(30);
                   }}
-                  className="px-2 py-0.5 rounded bg-[#132030] hover:bg-[#1a2c42] text-[10px] text-slate-300 font-mono"
+                  className="px-2 py-0.5 rounded bg-[#F0F7FF] hover:bg-[#1a2c42] text-[10px] text-[#4B5563] font-mono"
                 >
                   Tachycardia (75➔125)
                 </button>
@@ -750,7 +750,7 @@ export function SimulationEventsPage({
                     setDriftTarget(86);
                     setDriftDuration(35);
                   }}
-                  className="px-2 py-0.5 rounded bg-[#132030] hover:bg-[#1a2c42] text-[10px] text-slate-300 font-mono"
+                  className="px-2 py-0.5 rounded bg-[#F0F7FF] hover:bg-[#1a2c42] text-[10px] text-[#4B5563] font-mono"
                 >
                   Hypoxia (98➔86%)
                 </button>
@@ -762,7 +762,7 @@ export function SimulationEventsPage({
                     setDriftTarget(39.4);
                     setDriftDuration(40);
                   }}
-                  className="px-2 py-0.5 rounded bg-[#132030] hover:bg-[#1a2c42] text-[10px] text-slate-300 font-mono"
+                  className="px-2 py-0.5 rounded bg-[#F0F7FF] hover:bg-[#1a2c42] text-[10px] text-[#4B5563] font-mono"
                 >
                   Fever (37➔39.4°C)
                 </button>
@@ -771,13 +771,13 @@ export function SimulationEventsPage({
 
             {/* Live Preview Indicator */}
             <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-2.5 text-xs space-y-1">
-              <div className="flex items-center justify-between text-[11px] text-slate-300">
+              <div className="flex items-center justify-between text-[11px] text-[#4B5563]">
                 <span>Ramp Progression:</span>
                 <span className="font-mono text-cyan-300 font-bold">
                   {driftStart} ➔ {driftTarget} over {driftDuration}s
                 </span>
               </div>
-              <div className="w-full bg-[#08101a] h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-white h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-cyan-400 h-full transition-all duration-300"
                   style={{
@@ -801,7 +801,7 @@ export function SimulationEventsPage({
         {/* ─────────────────────────────────────────────────────────────
             CARD 2: SUDDEN VITAL SIGN SPIKES
         ───────────────────────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-[#1b2f42] bg-[#0c1825]/95 p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-amber-500/40 transition-colors">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-amber-500/40 transition-colors">
           <div className="space-y-3">
             {/* Header */}
             <div className="flex items-start justify-between">
@@ -810,7 +810,7 @@ export function SimulationEventsPage({
                   <Zap className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">2. Sudden Vital Sign Spikes</h3>
+                  <h3 className="text-sm font-bold text-[#111827]">2. Sudden Vital Sign Spikes</h3>
                   <span className="text-[11px] text-amber-400 font-mono">Abrupt transient excursion</span>
                 </div>
               </div>
@@ -818,24 +818,24 @@ export function SimulationEventsPage({
                 className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase font-mono ${
                   spikeRunning
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
-                    : 'bg-slate-800 text-slate-400'
+                    : 'bg-[#F0F7FF] text-[#4B5563]'
                 }`}
               >
                 {spikeRunning ? 'SPIKING' : 'INACTIVE'}
               </span>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-[#4B5563] leading-relaxed">
               Injects sudden high-magnitude spikes into vital signs to test acute threshold tripping and verify instant NEWS2 Red Score trigger detection.
             </p>
 
             {/* Vital Sign Selector */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-300">Target Vital:</label>
+              <label className="text-[11px] font-semibold text-[#4B5563]">Target Vital:</label>
               <select
                 value={spikeVital}
                 onChange={(e) => setSpikeVital(e.target.value)}
-                className="w-full rounded-xl border border-[#1d2f42] bg-[#08101a] px-3 py-2 text-xs text-slate-200 focus:border-amber-400 focus:outline-none"
+                className="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#111827] focus:border-amber-400 focus:outline-none"
               >
                 <option value="heart_rate">Heart Rate (bpm)</option>
                 <option value="oxygen_saturation">Oxygen Saturation (SpO₂ %)</option>
@@ -847,28 +847,28 @@ export function SimulationEventsPage({
             {/* Config: Spike Value, Duration */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-slate-400">Spike Target Value</label>
+                <label className="text-[10px] text-[#4B5563]">Spike Target Value</label>
                 <input
                   type="number"
                   value={spikeValue}
                   onChange={(e) => setSpikeValue(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-lg border border-[#1d2f42] bg-[#08101a] px-2 py-1.5 text-xs text-amber-300 font-mono text-center font-bold"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-xs text-amber-300 font-mono text-center font-bold"
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400">Duration (seconds)</label>
+                <label className="text-[10px] text-[#4B5563]">Duration (seconds)</label>
                 <input
                   type="number"
                   value={spikeDuration}
                   onChange={(e) => setSpikeDuration(parseInt(e.target.value, 10) || 5)}
-                  className="w-full rounded-lg border border-[#1d2f42] bg-[#08101a] px-2 py-1.5 text-xs text-slate-100 font-mono text-center"
+                  className="w-full rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 text-xs text-[#111827] font-mono text-center"
                 />
               </div>
             </div>
 
             {/* Quick Presets */}
             <div className="space-y-1">
-              <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Quick Presets:</span>
+              <span className="text-[10px] text-[#4B5563] font-semibold uppercase tracking-wider">Quick Presets:</span>
               <div className="flex flex-wrap gap-1">
                 <button
                   type="button"
@@ -877,7 +877,7 @@ export function SimulationEventsPage({
                     setSpikeValue(160);
                     setSpikeDuration(10);
                   }}
-                  className="px-2 py-0.5 rounded bg-[#132030] hover:bg-[#1a2c42] text-[10px] text-slate-300 font-mono"
+                  className="px-2 py-0.5 rounded bg-[#F0F7FF] hover:bg-[#1a2c42] text-[10px] text-[#4B5563] font-mono"
                 >
                   HR ➔ 160 bpm
                 </button>
@@ -888,7 +888,7 @@ export function SimulationEventsPage({
                     setSpikeValue(76);
                     setSpikeDuration(12);
                   }}
-                  className="px-2 py-0.5 rounded bg-[#132030] hover:bg-[#1a2c42] text-[10px] text-slate-300 font-mono"
+                  className="px-2 py-0.5 rounded bg-[#F0F7FF] hover:bg-[#1a2c42] text-[10px] text-[#4B5563] font-mono"
                 >
                   SpO₂ ➔ 76%
                 </button>
@@ -899,7 +899,7 @@ export function SimulationEventsPage({
                     setSpikeValue(34);
                     setSpikeDuration(8);
                   }}
-                  className="px-2 py-0.5 rounded bg-[#132030] hover:bg-[#1a2c42] text-[10px] text-slate-300 font-mono"
+                  className="px-2 py-0.5 rounded bg-[#F0F7FF] hover:bg-[#1a2c42] text-[10px] text-[#4B5563] font-mono"
                 >
                   RR ➔ 34 /min
                 </button>
@@ -907,7 +907,7 @@ export function SimulationEventsPage({
             </div>
 
             {/* Live Display Note */}
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs text-slate-300">
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs text-[#4B5563]">
               <span className="font-semibold text-amber-300">Instant Escalation:</span> Shifts vital to {spikeValue} immediately for {spikeDuration} seconds, then automatically recovers.
             </div>
           </div>
@@ -925,7 +925,7 @@ export function SimulationEventsPage({
         {/* ─────────────────────────────────────────────────────────────
             CARD 3: MISSING READINGS / DROPOUTS
         ───────────────────────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-[#1b2f42] bg-[#0c1825]/95 p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-purple-500/40 transition-colors">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-purple-500/40 transition-colors">
           <div className="space-y-3">
             {/* Header */}
             <div className="flex items-start justify-between">
@@ -934,7 +934,7 @@ export function SimulationEventsPage({
                   <WifiOff className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">3. Missing Readings / Dropouts</h3>
+                  <h3 className="text-sm font-bold text-[#111827]">3. Missing Readings / Dropouts</h3>
                   <span className="text-[11px] text-purple-400 font-mono">Telemetry packet loss</span>
                 </div>
               </div>
@@ -942,24 +942,24 @@ export function SimulationEventsPage({
                 className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase font-mono ${
                   dropoutRunning
                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 animate-pulse'
-                    : 'bg-slate-800 text-slate-400'
+                    : 'bg-[#F0F7FF] text-[#4B5563]'
                 }`}
               >
                 {dropoutRunning ? 'DROPPING' : 'INACTIVE'}
               </span>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-[#4B5563] leading-relaxed">
               Simulates intermittent sensor transmission failure, wireless packet loss, or battery exhaustion. Missing vitals render as "No Reading".
             </p>
 
             {/* Sensor Selection */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-300">Affected Sensor Channel:</label>
+              <label className="text-[11px] font-semibold text-[#4B5563]">Affected Sensor Channel:</label>
               <select
                 value={dropoutVital}
                 onChange={(e) => setDropoutVital(e.target.value)}
-                className="w-full rounded-xl border border-[#1d2f42] bg-[#08101a] px-3 py-2 text-xs text-slate-200 focus:border-purple-400 focus:outline-none"
+                className="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#111827] focus:border-purple-400 focus:outline-none"
               >
                 <option value="all">All Wearable Sensors (Complete Telemetry Loss)</option>
                 <option value="oxygen_saturation">Pulse Oximeter Only (SpO₂ Missing)</option>
@@ -971,7 +971,7 @@ export function SimulationEventsPage({
 
             {/* Duration */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-300">Dropout Duration (seconds):</label>
+              <label className="text-[11px] font-semibold text-[#4B5563]">Dropout Duration (seconds):</label>
               <div className="grid grid-cols-4 gap-1.5">
                 {[5, 10, 20, 30].map((d) => (
                   <button
@@ -980,8 +980,8 @@ export function SimulationEventsPage({
                     onClick={() => setDropoutDuration(d)}
                     className={`py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
                       dropoutDuration === d
-                        ? 'bg-purple-600 text-white shadow-md'
-                        : 'bg-[#132030] text-slate-300 hover:bg-[#1a2c42]'
+                        ? 'bg-purple-600 text-[#111827] shadow-md'
+                        : 'bg-[#F0F7FF] text-[#4B5563] hover:bg-[#1a2c42]'
                     }`}
                   >
                     {d}s
@@ -991,12 +991,12 @@ export function SimulationEventsPage({
             </div>
 
             {/* Sensor Status Preview */}
-            <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-2.5 text-xs text-slate-300 space-y-1">
+            <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-2.5 text-xs text-[#4B5563] space-y-1">
               <div className="flex items-center space-x-1.5 font-semibold text-purple-300">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 <span>Sensor Disconnection Indicator:</span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-[#4B5563]">
                 Channels will display <span className="font-mono text-purple-300 font-bold">"No Reading"</span> and SQI drops to LOW to indicate hardware dropout without alarming false shock.
               </p>
             </div>
@@ -1005,7 +1005,7 @@ export function SimulationEventsPage({
           {/* Action Button */}
           <button
             onClick={handleStartDropout}
-            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-950/40 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-[#111827] font-bold text-xs shadow-lg shadow-purple-950/40 transition-all flex items-center justify-center space-x-2 cursor-pointer"
           >
             <WifiOff className="h-4 w-4" />
             <span>Start Dropout</span>
@@ -1015,7 +1015,7 @@ export function SimulationEventsPage({
         {/* ─────────────────────────────────────────────────────────────
             CARD 4: MOTION-RELATED NOISE
         ───────────────────────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-[#1b2f42] bg-[#0c1825]/95 p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-orange-500/40 transition-colors">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-orange-500/40 transition-colors">
           <div className="space-y-3">
             {/* Header */}
             <div className="flex items-start justify-between">
@@ -1024,7 +1024,7 @@ export function SimulationEventsPage({
                   <Activity className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">4. Motion-Related Noise</h3>
+                  <h3 className="text-sm font-bold text-[#111827]">4. Motion-Related Noise</h3>
                   <span className="text-[11px] text-orange-400 font-mono">Tremors & physical movement</span>
                 </div>
               </div>
@@ -1032,21 +1032,21 @@ export function SimulationEventsPage({
                 className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase font-mono ${
                   noiseRunning
                     ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 animate-pulse'
-                    : 'bg-slate-800 text-slate-400'
+                    : 'bg-[#F0F7FF] text-[#4B5563]'
                 }`}
               >
                 {noiseRunning ? 'NOISE ACTIVE' : 'INACTIVE'}
               </span>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-[#4B5563] leading-relaxed">
               Simulates optical motion artifacts from patient ambulation or tremors. Tests conservative SQI artifact filtering (advisory flag raised without suppressing true alerts).
             </p>
 
             {/* Affected Vitals Checkboxes */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-300">Vitals Subject to Movement:</label>
-              <div className="flex space-x-4 text-xs text-slate-300">
+              <label className="text-[11px] font-semibold text-[#4B5563]">Vitals Subject to Movement:</label>
+              <div className="flex space-x-4 text-xs text-[#4B5563]">
                 <label className="flex items-center space-x-1.5 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1055,7 +1055,7 @@ export function SimulationEventsPage({
                       if (e.target.checked) setNoiseVitals([...noiseVitals, 'oxygen_saturation']);
                       else setNoiseVitals(noiseVitals.filter((v) => v !== 'oxygen_saturation'));
                     }}
-                    className="rounded bg-[#08101a] border-[#1d2f42] text-orange-500"
+                    className="rounded bg-white border-[#E5E7EB] text-orange-500"
                   />
                   <span>SpO₂ (PPG Sensor)</span>
                 </label>
@@ -1067,7 +1067,7 @@ export function SimulationEventsPage({
                       if (e.target.checked) setNoiseVitals([...noiseVitals, 'heart_rate']);
                       else setNoiseVitals(noiseVitals.filter((v) => v !== 'heart_rate'));
                     }}
-                    className="rounded bg-[#08101a] border-[#1d2f42] text-orange-500"
+                    className="rounded bg-white border-[#E5E7EB] text-orange-500"
                   />
                   <span>Heart Rate (ECG)</span>
                 </label>
@@ -1076,7 +1076,7 @@ export function SimulationEventsPage({
 
             {/* Noise Intensity */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-300">Noise Intensity:</label>
+              <label className="text-[11px] font-semibold text-[#4B5563]">Noise Intensity:</label>
               <div className="grid grid-cols-3 gap-2">
                 {(['low', 'medium', 'high'] as const).map((lvl) => (
                   <button
@@ -1085,8 +1085,8 @@ export function SimulationEventsPage({
                     onClick={() => setNoiseIntensity(lvl)}
                     className={`py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
                       noiseIntensity === lvl
-                        ? 'bg-orange-600 text-white shadow-md'
-                        : 'bg-[#132030] text-slate-300 hover:bg-[#1a2c42]'
+                        ? 'bg-orange-600 text-[#111827] shadow-md'
+                        : 'bg-[#F0F7FF] text-[#4B5563] hover:bg-[#1a2c42]'
                     }`}
                   >
                     {lvl}
@@ -1096,7 +1096,7 @@ export function SimulationEventsPage({
             </div>
 
             {/* SQI Behavior Note */}
-            <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-2.5 text-xs text-slate-300">
+            <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-2.5 text-xs text-[#4B5563]">
               <span className="font-semibold text-orange-300">Clinical Safeguard:</span> SQI status will transition to <span className="font-bold text-amber-300">MEDIUM (0.6)</span> with note: <em>"Motion artifact detected"</em>, avoiding false emergency codes.
             </div>
           </div>
@@ -1114,7 +1114,7 @@ export function SimulationEventsPage({
         {/* ─────────────────────────────────────────────────────────────
             CARD 5: PROBE REMOVAL ARTIFACT
         ───────────────────────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-rose-500/40 bg-[#0c1825]/95 p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-rose-400 transition-colors">
+        <div className="rounded-2xl border border-rose-500/40 bg-white shadow-sm p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-rose-400 transition-colors">
           <div className="space-y-3">
             {/* Header */}
             <div className="flex items-start justify-between">
@@ -1123,7 +1123,7 @@ export function SimulationEventsPage({
                   <AlertOctagon className="h-5 w-5 animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">5. Probe Removal Artifact</h3>
+                  <h3 className="text-sm font-bold text-[#111827]">5. Probe Removal Artifact</h3>
                   <span className="text-[11px] text-rose-400 font-mono">Pulse oximeter detached</span>
                 </div>
               </div>
@@ -1131,19 +1131,19 @@ export function SimulationEventsPage({
                 className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase font-mono ${
                   probeRemoved
                     ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 animate-bounce'
-                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-[#D9F0FF] text-[#4A90E2] text-[#4A90E2] border border-[#4A90E2]/30'
                 }`}
               >
                 {probeRemoved ? 'PROBE DETACHED' : 'ATTACHED'}
               </span>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-[#4B5563] leading-relaxed">
               Simulates finger pulse oximeter probe fall-off. SpO₂ immediately collapses to <span className="font-bold text-rose-400">0%</span> and heart-rate flatlines to zero.
             </p>
 
             {/* Expected Verification Characteristics */}
-            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 space-y-1.5 text-xs text-slate-300">
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 space-y-1.5 text-xs text-[#4B5563]">
               <div className="flex items-center justify-between font-mono text-[11px]">
                 <span>SpO₂ Reading:</span>
                 <span className="font-bold text-rose-400">0% (Null Signal)</span>
@@ -1162,7 +1162,7 @@ export function SimulationEventsPage({
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-[#4B5563]">
               Verifies that sensor detachment generates a separate <strong>device quality warning</strong> rather than falsely diagnosing clinical cardiac arrest.
             </p>
           </div>
@@ -1173,8 +1173,8 @@ export function SimulationEventsPage({
               onClick={handleRemoveProbe}
               className={`py-2.5 px-3 rounded-xl font-bold text-xs shadow-lg transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                 probeRemoved
-                  ? 'bg-rose-700 text-white cursor-default'
-                  : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/40'
+                  ? 'bg-rose-700 text-[#111827] cursor-default'
+                  : 'bg-rose-600 hover:bg-rose-500 text-[#111827] shadow-rose-950/40'
               }`}
             >
               <AlertOctagon className="h-4 w-4" />

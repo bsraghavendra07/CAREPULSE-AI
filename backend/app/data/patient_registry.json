@@ -1,0 +1,46 @@
+[
+  {
+    "uid": "patient-p-001",
+    "email": "patient@carepulse.org",
+    "full_name": "Robert Thompson",
+    "phone_number": "+1-555-0182",
+    "patient_id": "P-001",
+    "password_hash": "957b40d4ba82327d0b59c6b6c1346d8bda72a552940100fba81567af540a62a0",
+    "salt": "c46e29ed8c6882e3fb39e80a7669e9df",
+    "created_at": "2026-11-12T21:58:01.160334",
+    "status": "ACTIVE"
+  },
+  {
+    "uid": "patient-p-002",
+    "email": "margaret.chen@patient.carepulse.org",
+    "full_name": "Margaret Chen",
+    "phone_number": "+1-555-0183",
+    "patient_id": "P-002",
+    "password_hash": "0a2546e802c7a60a211b050111d2d3e00b0b8ba915498bdfced4fa93ad3974da",
+    "salt": "d55932dd9a57a0589162487732f19673",
+    "created_at": "2026-11-12T21:58:01.196878",
+    "status": "ACTIVE"
+  },
+  {
+    "uid": "patient-p-003",
+    "email": "james.walker@patient.carepulse.org",
+    "full_name": "James Walker",
+    "phone_number": "+1-555-0184",
+    "patient_id": "P-003",
+    "password_hash": "bd8300e12c4b01760a4d757c80b2ae7aadbcfa8afe7f2e54e93667ffe9d9d6a5",
+    "salt": "a6984fae8f41e2fb329e4109fb6f6364",
+    "created_at": "2026-11-12T21:58:01.239439",
+    "status": "ACTIVE"
+  },
+  {
+    "uid": "patient-e362591ed98e",
+    "email": "clara.oswald@patient.carepulse.org",
+    "full_name": "Clara Oswald",
+    "phone_number": "+1-555-0922",
+    "patient_id": "P-004",
+    "password_hash": "4029257d655d555563f8e91eb960c94684d2b11d8e5e5f900c460fd24e62ad95",
+    "salt": "096a761851daa25e6822abfef66c4fa4",
+    "created_at": "2026-11-12T22:37:58.130058",
+    "status": "ACTIVE"
+  }
+]

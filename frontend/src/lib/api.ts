@@ -17,6 +17,18 @@ export async function fetchPatient(id: string): Promise<PatientProfile> {
   return res.json();
 }
 
+export async function fetchPatientNews2(id: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/patients/${id}/news2`);
+  if (!res.ok) throw new Error(`Failed to fetch patient NEWS2 data for ${id}: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchPatientSignalQuality(id: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/patients/${id}/signal-quality`);
+  if (!res.ok) throw new Error(`Failed to fetch signal quality for ${id}: ${res.statusText}`);
+  return res.json();
+}
+
 export async function triggerScenario(patientId: string, scenario: string): Promise<any> {
   const res = await fetch(`${API_BASE}/scenarios/trigger`, {
     method: 'POST',
@@ -62,6 +74,76 @@ export async function fetchFhirBundle(patientId: string): Promise<FHIRBundle> {
 export async function fetchActiveScenarios(): Promise<Record<string, string | null>> {
   const res = await fetch(`${API_BASE}/scenarios/active`);
   if (!res.ok) return {};
+  return res.json();
+}
+
+export async function startSimulationEvent(
+  patientId: string,
+  eventType: string,
+  duration: number = 30,
+  params: Record<string, any> = {}
+): Promise<any> {
+  const res = await fetch(`${API_BASE}/scenarios/event/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      patient_id: patientId,
+      event_type: eventType,
+      duration,
+      params,
+    }),
+  });
+  if (!res.ok) throw new Error(`Failed to start simulation event: ${res.statusText}`);
+  return res.json();
+}
+
+export async function stopSimulationEvent(patientId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/scenarios/event/stop`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ patient_id: patientId }),
+  });
+  if (!res.ok) throw new Error(`Failed to stop simulation event: ${res.statusText}`);
+  return res.json();
+}
+
+export async function restoreProbe(patientId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/scenarios/event/restore_probe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ patient_id: patientId }),
+  });
+  if (!res.ok) throw new Error(`Failed to restore probe: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchSimulationEventStatus(patientId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/scenarios/event/status?patient_id=${patientId}`);
+  if (!res.ok) return { active_event: null };
+  return res.json();
+}
+
+export async function pauseSimulation(): Promise<any> {
+  const res = await fetch(`${API_BASE}/simulation/pause`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Failed to pause simulation: ${res.statusText}`);
+  return res.json();
+}
+
+export async function resumeSimulation(): Promise<any> {
+  const res = await fetch(`${API_BASE}/simulation/resume`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Failed to resume simulation: ${res.statusText}`);
+  return res.json();
+}
+
+export async function resetSimulation(): Promise<any> {
+  const res = await fetch(`${API_BASE}/simulation/reset`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Failed to reset simulation: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchSimulationState(): Promise<{ is_paused: boolean; speed_factor: number; tick_number: number }> {
+  const res = await fetch(`${API_BASE}/simulation/state`);
+  if (!res.ok) return { is_paused: false, speed_factor: 1, tick_number: 0 };
   return res.json();
 }
 
@@ -132,4 +214,269 @@ export async function resolveAlert(alertId: string, clinicianName: string = 'Dr.
   if (!res.ok) throw new Error(`Failed to resolve alert ${alertId}: ${res.statusText}`);
   return res.json();
 }
+
+// ─── Staff Registration & Hospital Administration APIs ───────────────────────
+
+export interface StaffRegistrationData {
+  full_name: string;
+  hospital_name: string;
+  email: string;
+  employee_id: string;
+  phone_number: string;
+  password: string;
+  confirm_password: string;
+}
+
+export interface StaffUserRecord {
+  uid: string;
+  email: string;
+  full_name: string;
+  hospital_name: string;
+  employee_id: string;
+  phone_number: string;
+  role: 'DOCTOR' | 'NURSE' | 'HOSPITAL_ADMIN' | 'STAFF_PENDING';
+  status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+  created_at: string;
+  approved_at?: string;
+  approved_by?: string;
+  department?: string;
+}
+
+export async function registerStaffAccount(data: StaffRegistrationData): Promise<{ success: boolean; message: string; user: StaffUserRecord }> {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.detail || 'Registration failed.');
+  }
+  return json;
+}
+
+export async function loginStaffAccount(email: string, pass: string): Promise<{ success: boolean; token: string; user: StaffUserRecord }> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: pass }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.detail || 'Invalid hospital email or password.');
+  }
+  return json;
+}
+
+export async function fetchPendingStaff(): Promise<StaffUserRecord[]> {
+  const session = localStorage.getItem('carepulse_staff_session');
+  let token = 'Bearer carepulse-staff-staff-admin-001';
+  if (session) {
+    try {
+      const parsed = JSON.parse(session);
+      if (parsed.uid) token = `Bearer carepulse-staff-${parsed.uid}`;
+    } catch {}
+  }
+  const res = await fetch(`${API_BASE}/admin/pending-staff`, {
+    headers: { Authorization: token },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch pending staff: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchAllStaff(): Promise<StaffUserRecord[]> {
+  const session = localStorage.getItem('carepulse_staff_session');
+  let token = 'Bearer carepulse-staff-staff-admin-001';
+  if (session) {
+    try {
+      const parsed = JSON.parse(session);
+      if (parsed.uid) token = `Bearer carepulse-staff-${parsed.uid}`;
+    } catch {}
+  }
+  const res = await fetch(`${API_BASE}/admin/staff`, {
+    headers: { Authorization: token },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch all staff: ${res.statusText}`);
+  return res.json();
+}
+
+export async function approveStaff(uid: string, role: string, department?: string): Promise<any> {
+  const session = localStorage.getItem('carepulse_staff_session');
+  let token = 'Bearer carepulse-staff-staff-admin-001';
+  if (session) {
+    try {
+      const parsed = JSON.parse(session);
+      if (parsed.uid) token = `Bearer carepulse-staff-${parsed.uid}`;
+    } catch {}
+  }
+  const res = await fetch(`${API_BASE}/admin/approve-staff/${uid}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: token,
+    },
+    body: JSON.stringify({ role, department }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.detail || 'Failed to approve staff member.');
+  return json;
+}
+
+export async function rejectStaff(uid: string): Promise<any> {
+  const session = localStorage.getItem('carepulse_staff_session');
+  let token = 'Bearer carepulse-staff-staff-admin-001';
+  if (session) {
+    try {
+      const parsed = JSON.parse(session);
+      if (parsed.uid) token = `Bearer carepulse-staff-${parsed.uid}`;
+    } catch {}
+  }
+  const res = await fetch(`${API_BASE}/admin/reject-staff/${uid}`, {
+    method: 'POST',
+    headers: { Authorization: token },
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.detail || 'Failed to reject staff member.');
+  return json;
+}
+
+// ─── Patient Portal API Functions ──────────────────────────────────────────
+
+export interface PatientUserRecord {
+  uid: string;
+  email: string;
+  full_name: string;
+  patient_id: string;
+  phone_number: string;
+  created_at: string;
+}
+
+export async function registerPatientAccount(data: {
+  full_name: string;
+  email: string;
+  phone_number: string;
+  patient_id: string;
+  password: string;
+  confirm_password: string;
+}): Promise<{ success: boolean; message: string; user: PatientUserRecord }> {
+  const res = await fetch(`${API_BASE}/patient/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.detail || 'Patient registration failed.');
+  }
+  return json;
+}
+
+export async function loginPatientAccount(email: string, pass: string): Promise<{ success: boolean; token: string; user: PatientUserRecord }> {
+  const res = await fetch(`${API_BASE}/patient/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: pass }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.detail || 'Invalid patient email or password.');
+  }
+  return json;
+}
+
+export async function fetchPatientPortalData(): Promise<any> {
+  const session = localStorage.getItem('carepulse_patient_session');
+  let token = '';
+  if (session) {
+    try {
+      const parsed = JSON.parse(session);
+      if (parsed.token) token = `Bearer ${parsed.token}`;
+      else if (parsed.uid) token = `Bearer carepulse-patient-${parsed.uid}`;
+    } catch {}
+  }
+  if (!token) {
+    token = 'Bearer carepulse-patient-P-001';
+  }
+
+  const res = await fetch(`${API_BASE}/patient/portal/my-data`, {
+    headers: { Authorization: token },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to retrieve patient portal data');
+  }
+  return res.json();
+}
+
+// ─── Hospital Billing & Accounting API Functions ─────────────────────────────
+
+export interface InvoiceItem {
+  id: string;
+  invoice_id: string;
+  patient_id: string;
+  patient_name: string;
+  service: string;
+  amount: number;
+  insurance_covered: number;
+  patient_due: number;
+  status: 'PENDING' | 'APPROVED' | 'PAID' | 'PROCESSED';
+  created_at: string;
+  payment_method: string;
+  accountant_notes?: string;
+}
+
+export async function fetchBillingSummary(): Promise<any> {
+  const session = localStorage.getItem('carepulse_staff_session');
+  let token = 'Bearer carepulse-staff-staff-acct-davis';
+  if (session) {
+    try {
+      const parsed = JSON.parse(session);
+      if (parsed.uid) token = `Bearer carepulse-staff-${parsed.uid}`;
+    } catch {}
+  }
+  const res = await fetch(`${API_BASE}/billing/summary`, {
+    headers: { Authorization: token },
+  });
+  if (!res.ok) throw new Error('Failed to retrieve billing summary');
+  return res.json();
+}
+
+export async function fetchBillingInvoices(): Promise<InvoiceItem[]> {
+  const session = localStorage.getItem('carepulse_staff_session');
+  let token = 'Bearer carepulse-staff-staff-acct-davis';
+  if (session) {
+    try {
+      const parsed = JSON.parse(session);
+      if (parsed.uid) token = `Bearer carepulse-staff-${parsed.uid}`;
+    } catch {}
+  }
+  const res = await fetch(`${API_BASE}/billing/invoices`, {
+    headers: { Authorization: token },
+  });
+  if (!res.ok) throw new Error('Failed to retrieve invoices');
+  return res.json();
+}
+
+export async function processBillingInvoice(invoiceId: string, action: string = 'PROCESSED', notes?: string): Promise<any> {
+  const session = localStorage.getItem('carepulse_staff_session');
+  let token = 'Bearer carepulse-staff-staff-acct-davis';
+  if (session) {
+    try {
+      const parsed = JSON.parse(session);
+      if (parsed.uid) token = `Bearer carepulse-staff-${parsed.uid}`;
+    } catch {}
+  }
+  const res = await fetch(`${API_BASE}/billing/process-invoice/${invoiceId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: token,
+    },
+    body: JSON.stringify({ action, notes }),
+  });
+  if (!res.ok) throw new Error('Failed to process invoice');
+  return res.json();
+}
+
+
 

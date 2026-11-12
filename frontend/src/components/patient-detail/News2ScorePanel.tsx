@@ -44,16 +44,19 @@ export function News2ScorePanel({ news2, sqiStatus, suggestedSpecialty }: News2S
 
   const RiskIcon = riskIcon;
 
-  // Parameter labels
+  // Parameter rows mapped to standard NEWS2 components
   const paramRows = [
-    { key: 'respiration_rate', label: 'Respiration Rate', code: 'RR' },
-    { key: 'oxygen_saturation', label: `Oxygen Saturation (${news2.scale_used === 'SCALE_2' ? 'Scale 2' : 'Scale 1'})`, code: 'SpO₂' },
-    { key: 'air_or_oxygen', label: 'Air or Oxygen', code: 'O₂' },
-    { key: 'systolic_bp', label: 'Systolic Blood Pressure', code: 'BP' },
-    { key: 'pulse', label: 'Pulse / Heart Rate', code: 'HR' },
-    { key: 'consciousness', label: 'Consciousness (ACVPU)', code: 'ACVPU' },
-    { key: 'temperature', label: 'Body Temperature', code: 'Temp' },
+    { key: 'respiration_rate', compKey: 'respiratory_rate', label: 'Respiratory Rate', code: 'RR' },
+    { key: 'spo2', compKey: 'spo2', label: 'Oxygen Saturation', code: 'SpO₂' },
+    { key: 'pulse', compKey: 'heart_rate', label: 'Heart Rate', code: 'HR' },
+    { key: 'temperature', compKey: 'temperature', label: 'Body Temperature', code: 'Temp' },
+    { key: 'systolic_bp', compKey: 'systolic_bp', label: 'Systolic Blood Pressure', code: 'BP' },
+    { key: 'consciousness', compKey: 'consciousness', label: 'Consciousness (ACVPU)', code: 'ACVPU' },
+    { key: 'supplemental_oxygen', compKey: 'supplemental_oxygen', label: 'Supplemental Oxygen', code: 'Oxygen' },
   ];
+
+  const isScale2 = news2.scale_used === 'SCALE_2' || news2.scale2_prescribed;
+  const targetRange = news2.target_spo2_range || (isScale2 ? '88–92%' : '≥96%');
 
   return (
     <Card className="border-border">
@@ -63,17 +66,30 @@ export function News2ScorePanel({ news2, sqiStatus, suggestedSpecialty }: News2S
             <ShieldAlert className="h-5 w-5 text-primary" />
             <div>
               <CardTitle className="text-base font-bold">
-                PRIMARY CLINICAL SCORE: NEWS2
+                NEWS2 EARLY WARNING SCORE
               </CardTitle>
               <p className="text-[11px] text-muted-foreground">
-                Official Royal College of Physicians (RCP) Dec 2017 Early Warning Score
+                Official Royal College of Physicians (RCP) Dec 2017 Baseline Scoring Engine
               </p>
             </div>
           </div>
 
-          <Badge variant="outline" className="font-mono text-xs">
-            {news2.scale_used === 'SCALE_2' ? 'SCALE 2 (COPD)' : 'SCALE 1 (STANDARD)'}
-          </Badge>
+          <div className="text-right">
+            <Badge
+              variant="outline"
+              className={cn(
+                'font-mono text-xs font-bold',
+                isScale2
+                  ? 'bg-pink-500/15 text-pink-300 border-pink-500/40'
+                  : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+              )}
+            >
+              {isScale2 ? 'SpO₂ SCALE: 2' : 'SpO₂ SCALE: 1'}
+            </Badge>
+            <div className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+              Target: {targetRange}
+            </div>
+          </div>
         </div>
       </CardHeader>
 
@@ -125,16 +141,31 @@ export function News2ScorePanel({ news2, sqiStatus, suggestedSpecialty }: News2S
           </div>
         </div>
 
-        {/* Scale 2 Justification Notice */}
-        {news2.scale2_prescribed && (
-          <div className="bg-sky-500/10 border border-sky-500/30 p-2.5 rounded-lg text-xs text-sky-300 flex items-start space-x-2">
-            <Info className="h-4 w-4 shrink-0 mt-0.5 text-sky-400" />
-            <div>
-              <span className="font-semibold">Documented Scale 2 Prescribed: </span>
-              <span>{news2.scale2_justification || 'Hypercapnic respiratory drive (target SpO₂ 88-92%)'}</span>
+        {/* Personalization Rule 1 — SpO2 Scale 2 Display Card */}
+        <div className={cn(
+          'p-3 rounded-xl border text-xs space-y-1',
+          isScale2
+            ? 'bg-sky-500/10 border-sky-500/30 text-sky-200'
+            : 'bg-muted/40 border-border text-slate-300'
+        )}>
+          <div className="flex items-center justify-between font-semibold">
+            <div className="flex items-center space-x-1.5">
+              <Info className={cn('h-4 w-4', isScale2 ? 'text-sky-400' : 'text-slate-400')} />
+              <span>Personalization Rule 1: SpO₂ Scale</span>
             </div>
+            <span className="font-mono px-2 py-0.5 rounded bg-black/40 border border-border">
+              {isScale2 ? 'SpO₂ Scale: Scale 2' : 'SpO₂ Scale: Scale 1'}
+            </span>
           </div>
-        )}
+          <div className="text-[11px] text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-1 pt-1 border-t border-border/40">
+            <span>Target: <strong className="text-white font-mono">{targetRange}</strong></span>
+            <span>
+              {isScale2
+                ? 'Reason: Hypercapnic respiratory failure documented'
+                : 'Reason: Standard post-discharge recovery target'}
+            </span>
+          </div>
+        </div>
 
         {/* Red Score Alert Banner */}
         {news2.has_red_score && (
@@ -159,12 +190,12 @@ export function News2ScorePanel({ news2, sqiStatus, suggestedSpecialty }: News2S
 
         {/* 1. Alert Explanation: "Why did it alert?" Section */}
         {(news2.total_score > 0 || news2.has_red_score || news2.triage_tier !== 'ROUTINE') && (
-          <div className="rounded-xl border border-[#252F40] bg-[#151C2B] p-4 text-[#F1F5F9] space-y-2 shadow-sm">
+          <div className="rounded-xl border border-[#252F40] bg-[#151C2B] p-4 text-[#F1F5F9] space-y-2.5 shadow-sm">
             <div className="flex items-center justify-between border-b border-[#252F40] pb-2">
               <div className="flex items-center space-x-2 text-amber-400">
                 <AlertCircle className="h-4 w-4" />
                 <span className="text-xs font-bold uppercase tracking-wider">
-                  Why did it alert?
+                  Why did it alert? (NEWS2 Score: {news2.total_score})
                 </span>
               </div>
               <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
@@ -172,9 +203,24 @@ export function News2ScorePanel({ news2, sqiStatus, suggestedSpecialty }: News2S
               </span>
             </div>
 
-            <p className="text-xs text-[#F1F5F9] leading-relaxed">
-              {news2.alert_reason || 'Physiological vital-sign parameters exceeded safe baseline recovery thresholds.'}
-            </p>
+            {/* Primary Contributors List */}
+            {news2.primary_contributors && news2.primary_contributors.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-[11px] font-semibold text-slate-300">Primary contributors:</div>
+                <ul className="text-xs text-slate-200 list-disc list-inside space-y-0.5 pl-1">
+                  {news2.primary_contributors.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Personalization Applied Explanation */}
+            {isScale2 && (
+              <div className="p-2 rounded bg-sky-950/40 border border-sky-800/40 text-[11px] text-sky-200">
+                <strong>Personalization applied:</strong> SpO₂ Scale 2 selected because hypercapnic respiratory failure is documented for this patient (target range 88–92%).
+              </div>
+            )}
 
             <div className="pt-2 border-t border-[#252F40]/60 text-[11px] text-[#94A3B8] flex items-center justify-between">
               <span>Required Clinical Action: <strong className="text-slate-200 font-medium">{news2.clinical_action || actionText}</strong></span>
@@ -190,15 +236,23 @@ export function News2ScorePanel({ news2, sqiStatus, suggestedSpecialty }: News2S
           sqiStatus={sqiStatus}
         />
 
-        {/* Detailed Sub-Score Breakdown Table */}
+        {/* Detailed 7-Component Sub-Score Breakdown Table */}
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="bg-muted/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground grid grid-cols-12">
-            <span className="col-span-8">RCP Physiological Parameter</span>
+            <span className="col-span-8">NEWS2 Component Parameter</span>
             <span className="col-span-4 text-right">Sub-Score (0-3)</span>
           </div>
           <div className="divide-y divide-border">
             {paramRows.map((row) => {
-              const val = news2.sub_scores[row.key] ?? 0;
+              // Try components map first, then sub_scores map
+              let val: number | null | undefined = undefined;
+              if (news2.components && row.compKey in news2.components) {
+                val = news2.components[row.compKey];
+              } else if (news2.sub_scores) {
+                val = news2.sub_scores[row.key] ?? news2.sub_scores[row.code.toLowerCase()];
+              }
+
+              const isMissing = val === null || val === undefined;
               let badgeColor = 'text-emerald-400 bg-emerald-500/10';
               if (val === 3) badgeColor = 'text-rose-400 bg-rose-500/20 font-bold';
               else if (val === 2) badgeColor = 'text-amber-400 bg-amber-500/15';
@@ -206,10 +260,19 @@ export function News2ScorePanel({ news2, sqiStatus, suggestedSpecialty }: News2S
 
               return (
                 <div key={row.key} className="px-3 py-2 text-xs flex items-center justify-between hover:bg-muted/20">
-                  <span className="text-foreground font-medium">{row.label}</span>
-                  <span className={cn('px-2 py-0.5 rounded font-mono text-xs', badgeColor)}>
-                    Score {val}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-foreground font-medium">{row.label}</span>
+                    <span className="text-[10px] font-mono text-muted-foreground">({row.code})</span>
+                  </div>
+                  {isMissing ? (
+                    <span className="px-2 py-0.5 rounded font-mono text-[10px] bg-slate-800 text-slate-400 border border-slate-700">
+                      No observation available
+                    </span>
+                  ) : (
+                    <span className={cn('px-2 py-0.5 rounded font-mono text-xs', badgeColor)}>
+                      {val}
+                    </span>
+                  )}
                 </div>
               );
             })}

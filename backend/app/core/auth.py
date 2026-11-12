@@ -36,34 +36,92 @@ except Exception as e:
 security = HTTPBearer(auto_error=False)
 
 
+from app.core.patient_registry import patient_registry
+from app.core.staff_registry import StaffRole, StaffStatus, staff_registry
+
+
 async def verify_firebase_token(
     credentials: Optional[HTTPAuthorizationCredentials] = Security(security),
 ) -> dict[str, Any]:
-    """Validates Firebase ID token from Authorization: Bearer <token> header."""
+    """Validates Firebase ID token from Authorization: Bearer <token> header, enforcing hospital approval status."""
     if not credentials:
         # Fallback to local hospital staff session in development mode
         return {
             "uid": "staff-dr-rivera",
             "email": "dr.rivera@hospital.carepulse.org",
             "name": "Dr. Rivera",
-            "role": "Cardiologist",
+            "role": "DOCTOR",
             "department": "Cardiology & Post-Discharge",
+            "status": "APPROVED",
         }
 
     token = credentials.credentials
     try:
         decoded_token = admin_auth.verify_id_token(token)
+        email = decoded_token.get("email")
+        if email:
+            staff_user = staff_registry.get_by_email(email)
+            if staff_user and staff_user.status == StaffStatus.PENDING_APPROVAL:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Your registration has been submitted successfully. Please wait for hospital administrator approval.",
+                )
+            if staff_user and staff_user.status == StaffStatus.REJECTED:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Your registration request was rejected by the hospital administrator.",
+                )
         return decoded_token
+    except HTTPException:
+        raise
     except Exception as e:
         # Development / demo token fallback support
+        if token.startswith("carepulse-patient-"):
+            uid_or_email = token.replace("carepulse-patient-", "")
+            p_user = patient_registry.get_by_id(uid_or_email) or patient_registry.get_by_email(uid_or_email)
+            if p_user:
+                return {
+                    "uid": p_user.uid,
+                    "email": p_user.email,
+                    "name": p_user.full_name,
+                    "role": "PATIENT",
+                    "patient_id": p_user.patient_id,
+                    "status": p_user.status,
+                }
+            return {
+                "uid": token,
+                "email": "patient@carepulse.org",
+                "name": "Robert Thompson",
+                "role": "PATIENT",
+                "patient_id": "P-001",
+                "status": "ACTIVE",
+            }
+
         if token.startswith("carepulse-staff-"):
-            email_part = token.replace("carepulse-staff-", "")
+            uid_or_email = token.replace("carepulse-staff-", "")
+            # Look up in staff registry by uid or email
+            staff_user = staff_registry.get_by_id(uid_or_email) or staff_registry.get_by_email(uid_or_email)
+            if staff_user:
+                if staff_user.status == StaffStatus.PENDING_APPROVAL:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Your registration has been submitted successfully. Please wait for hospital administrator approval.",
+                    )
+                if staff_user.status == StaffStatus.REJECTED:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Your registration request was rejected by the hospital administrator.",
+                    )
+                return staff_user.to_safe_dict()
+
+            email_part = uid_or_email
             return {
                 "uid": token,
                 "email": f"{email_part}@hospital.carepulse.org",
                 "name": email_part.capitalize(),
-                "role": "Staff Clinician",
+                "role": "DOCTOR",
                 "department": "Inpatient Ward 4B",
+                "status": "APPROVED",
             }
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

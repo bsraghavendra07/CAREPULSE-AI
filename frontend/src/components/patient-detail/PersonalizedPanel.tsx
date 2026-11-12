@@ -25,6 +25,16 @@ export function PersonalizedPanel({ personalized, mlAnomaly, patient }: Personal
 
   const zScores = personalized.z_scores || {};
   const baseline = personalized.baseline || {};
+  const trends = personalized.trends || {};
+  const gradualAlert = personalized.gradual_deterioration;
+
+  const getTrendColor = (trend?: string, isDeteriorating?: boolean) => {
+    if (isDeteriorating) return 'text-rose-400 font-bold';
+    if (!trend || trend.includes('Insufficient')) return 'text-slate-500';
+    if (trend.includes('↓')) return 'text-amber-400';
+    if (trend.includes('↑')) return 'text-sky-400';
+    return 'text-emerald-400';
+  };
 
   return (
     <Card className="border-border">
@@ -34,31 +44,44 @@ export function PersonalizedPanel({ personalized, mlAnomaly, patient }: Personal
             <Sparkles className="h-5 w-5 text-indigo-400" />
             <div>
               <CardTitle className="text-base font-bold">
-                ADVISORY: Personalized Insights
+                PATIENT BASELINE & PERSONALIZATION
               </CardTitle>
               <p className="text-[11px] text-muted-foreground">
-                Statistical Z-Score baseline deviation (does NOT suppress NEWS2)
+                Personalization Rule 2: Individual rolling baseline & gradual trend detection
               </p>
             </div>
           </div>
 
-          <Badge variant="secondary" className="text-[10px] bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-            Advisory Layer
+          <Badge variant="secondary" className="text-[10px] bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-mono">
+            Personalization Layer
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 space-y-3">
-        {/* Important Clinical Notice */}
+      <CardContent className="p-4 space-y-3.5">
+        {/* Important Clinical Notice distinguishing NEWS2 from Personalized Baseline */}
         <div className="bg-muted/40 p-2.5 rounded-lg border border-border text-[11px] text-muted-foreground flex items-start space-x-2">
           <Info className="h-4 w-4 shrink-0 text-indigo-400 mt-0.5" />
           <span>
-            This engine tracks each patient's individual rolling baseline ($\mu, \sigma$). It provides early context on subtle personal deviations but <strong>never modifies, overrides, or silences standard NEWS2 alerts</strong>.
+            This engine tracks each patient's individual rolling baseline. It identifies <strong>gradual deterioration</strong> over time, distinct from acute NEWS2 scores, and <strong>never suppresses clinical safety alerts</strong>.
           </span>
         </div>
 
-        {/* Advisory Alert Banner if triggered */}
-        {personalized.is_advisory_alert ? (
+        {/* Gradual Deterioration Alert Banner */}
+        {gradualAlert?.detected ? (
+          <div className="bg-rose-500/15 border border-rose-500/40 p-3 rounded-xl text-xs text-rose-200 space-y-1.5 animate-pulse">
+            <div className="flex items-center space-x-2 text-rose-300 font-bold">
+              <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
+              <span>{gradualAlert.alert_message}</span>
+            </div>
+            <p className="text-[11px] text-slate-300">
+              {gradualAlert.clinical_explanation}
+            </p>
+            <div className="text-[10px] text-slate-400 pt-1 border-t border-rose-500/30 italic">
+              {gradualAlert.distinction_disclaimer}
+            </div>
+          </div>
+        ) : personalized.is_advisory_alert ? (
           <div className="bg-amber-500/15 border border-amber-500/30 p-3 rounded-lg text-xs text-amber-300 flex items-start space-x-2">
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
             <div>
@@ -74,13 +97,78 @@ export function PersonalizedPanel({ personalized, mlAnomaly, patient }: Personal
         )}
 
         {/* Narrative Clinical Advisory Note */}
-        {personalized.advisory_note && (
+        {personalized.advisory_note && !gradualAlert?.detected && (
           <div className="p-2.5 bg-card rounded-lg border border-border text-xs italic text-foreground">
             "{personalized.advisory_note}"
           </div>
         )}
 
-        {/* Z-Score & Baseline Matrix */}
+        {/* ── Section: PATIENT BASELINE (Requirement 14) ── */}
+        <div className="rounded-xl border border-border bg-[#0f141f] p-3 space-y-2">
+          <div className="flex items-center justify-between border-b border-border/50 pb-1.5">
+            <div className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-1.5">
+              <span>PATIENT BASELINE</span>
+              <span className="text-[10px] text-slate-400 font-normal">(Rolling Window)</span>
+            </div>
+            <span className="text-[10px] font-mono text-slate-400">Sliding Analysis</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            {/* SpO2 Baseline Card */}
+            <div className="p-2.5 rounded-lg bg-black/40 border border-border/70 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-teal-400 text-xs">SpO₂</span>
+                <span className={cn('text-[11px] font-mono font-semibold', getTrendColor(trends.spo2?.trend_direction, trends.spo2?.is_deteriorating))}>
+                  Trend: {trends.spo2?.trend_direction || '→ Stable'}
+                </span>
+              </div>
+              {trends.spo2 && trends.spo2.status !== 'Insufficient historical data' ? (
+                <div className="text-[11px] text-slate-300 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Baseline:</span>
+                    <span className="font-mono text-white">{trends.spo2.baseline_mean?.toFixed(1) || patient.baseline.oxygen_saturation}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Current:</span>
+                    <span className="font-mono text-white font-bold">{trends.spo2.current_value?.toFixed(1) || '—'}%</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-500 italic py-1">
+                  Baseline: {patient.baseline.oxygen_saturation}% • Insufficient historical data
+                </div>
+              )}
+            </div>
+
+            {/* HR Baseline Card */}
+            <div className="p-2.5 rounded-lg bg-black/40 border border-border/70 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-emerald-400 text-xs">HR</span>
+                <span className={cn('text-[11px] font-mono font-semibold', getTrendColor(trends.hr?.trend_direction, trends.hr?.is_deteriorating))}>
+                  Trend: {trends.hr?.trend_direction || '→ Stable'}
+                </span>
+              </div>
+              {trends.hr && trends.hr.status !== 'Insufficient historical data' ? (
+                <div className="text-[11px] text-slate-300 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Baseline:</span>
+                    <span className="font-mono text-white">{trends.hr.baseline_mean?.toFixed(0) || patient.baseline.heart_rate} bpm</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Current:</span>
+                    <span className="font-mono text-white font-bold">{trends.hr.current_value?.toFixed(0) || '—'} bpm</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-500 italic py-1">
+                  Baseline: {patient.baseline.heart_rate} bpm • Insufficient historical data
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Z-Score & Statistical Baseline Matrix */}
         <div className="rounded-lg border border-border overflow-hidden text-xs">
           <div className="bg-muted/50 px-3 py-1.5 font-semibold text-muted-foreground grid grid-cols-12">
             <span className="col-span-5">Parameter</span>

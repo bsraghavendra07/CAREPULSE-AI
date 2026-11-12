@@ -1,33 +1,69 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
-        primary:    { DEFAULT: 'hsl(var(--primary))',    foreground: 'hsl(var(--primary-foreground))' },
-        secondary:  { DEFAULT: 'hsl(var(--secondary))',  foreground: 'hsl(var(--secondary-foreground))' },
-        destructive:{ DEFAULT: 'hsl(var(--destructive))',foreground: 'hsl(var(--destructive-foreground))' },
-        muted:      { DEFAULT: 'hsl(var(--muted))',      foreground: 'hsl(var(--muted-foreground))' },
-        accent:     { DEFAULT: 'hsl(var(--accent))',     foreground: 'hsl(var(--accent-foreground))' },
-        card:       { DEFAULT: 'hsl(var(--card))',       foreground: 'hsl(var(--card-foreground))' },
-        popover:    { DEFAULT: 'hsl(var(--popover))',    foreground: 'hsl(var(--popover-foreground))' },
-        // Clinical risk colours
-        'risk-low':    '#22c55e',
-        'risk-medium': '#f59e0b',
-        'risk-high':   '#ef4444',
-        'sqi-high':    '#3b82f6',
-        'sqi-medium':  '#f59e0b',
-        'sqi-low':     '#ef4444',
+        border: '#E2E8F0',
+        input: '#E2E8F0',
+        ring: '#00A896',
+        background: '#F4FBF9',
+        foreground: '#131E3A',
+        // CarePulse Official Identity
+        cp: {
+          teal: '#00A896',
+          cyan: '#00D2C4',
+          darkteal: '#067A6E',
+          navy: '#131E3A',
+          mint: '#E6F7F5',
+          subtle: '#F4FBF9',
+          border: '#CCFBF1',
+        },
+        cream: {
+          DEFAULT: '#F4FBF9',
+          subtle: '#E6F7F5',
+          dark: '#E2E8F0',
+        },
+        primary: {
+          DEFAULT: '#00A896',
+          hover: '#067A6E',
+          foreground: '#FFFFFF',
+        },
+        secondary: {
+          DEFAULT: '#E6F7F5',
+          foreground: '#067A6E',
+        },
+        accent: {
+          DEFAULT: '#111111',
+          foreground: '#FFFFFF',
+        },
+        muted: {
+          DEFAULT: '#EFECE4',
+          foreground: '#6B7280',
+        },
+        card: {
+          DEFAULT: '#FFFFFF',
+          foreground: '#111111',
+        },
+        popover: {
+          DEFAULT: '#FFFFFF',
+          foreground: '#111111',
+        },
+        // Clinical semantic indicators
+        'risk-low': '#16A34A',
+        'risk-medium': '#D97706',
+        'risk-high': '#DC2626',
+        'sqi-high': '#111111',
+        'sqi-medium': '#D97706',
+        'sqi-low': '#DC2626',
       },
-      borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+      borderRadius: {
+        '3xl': '1.5rem',
+        '2xl': '1rem',
+        xl: '0.75rem',
+        lg: '0.5rem',
+      },
     },
   },
   plugins: [],
 };
-

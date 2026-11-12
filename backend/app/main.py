@@ -15,15 +15,20 @@ from pydantic import BaseModel
 
 from app.api import (
     routes_alerts,
+    routes_auth,
+    routes_billing,
     routes_fhir,
     routes_ml,
+    routes_patient_portal,
     routes_patients,
     routes_report,
     routes_scenarios,
     routes_telemetry,
 )
 from app.api.websocket_manager import TelemetryManager
+from app.core.news2 import evaluate_hypercapnic_failure
 from app.core.specialist_router import categorize_patient
+from app.core.staff_registry import StaffStatus, staff_registry
 from app.ml.isolation_forest_model import initialize_ml_model
 
 logging.basicConfig(level=logging.INFO)
@@ -54,8 +59,13 @@ def _load_synthea_profiles() -> dict[str, dict[str, Any]]:
             exts = {ext.get("url"): ext for ext in data.get("extension", [])}
 
             condition = exts.get("urn:minearena:condition", {}).get("valueString", "Post-Discharge Monitoring")
-            scale2_prescribed = exts.get("urn:minearena:scale2_prescribed", {}).get("valueBoolean", False)
+            scale2_prescribed_ext = exts.get("urn:minearena:scale2_prescribed", {}).get("valueBoolean", False)
             risk_summary = exts.get("urn:minearena:risk_summary", {}).get("valueString", "")
+
+            # Personalization Rule 1: Dynamic clinical evaluation of hypercapnic respiratory failure
+            is_scale2, target_spo2_range, scale2_reason = evaluate_hypercapnic_failure(
+                {"condition": condition, "risk_summary": risk_summary, "scale2_prescribed": scale2_prescribed_ext}
+            )
 
             baseline_hr = float(exts.get("urn:minearena:baseline_hr", {}).get("valueDecimal", 75))
             baseline_spo2 = float(exts.get("urn:minearena:baseline_spo2", {}).get("valueDecimal", 97))
@@ -69,7 +79,10 @@ def _load_synthea_profiles() -> dict[str, dict[str, Any]]:
                 "gender": data.get("gender", "unknown"),
                 "birthDate": data.get("birthDate", "1970-01-01"),
                 "condition": condition,
-                "scale2_prescribed": scale2_prescribed,
+                "scale2_prescribed": is_scale2,
+                "spo2_scale": 2 if is_scale2 else 1,
+                "spo2_target": target_spo2_range,
+                "scale2_justification": scale2_reason,
                 "riskSummary": risk_summary,
                 "baseline": {
                     "heart_rate": baseline_hr,
@@ -115,6 +128,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Inject dependencies into routes
     routes_patients.set_patients(patients)
+    routes_patients.set_telemetry_manager(telemetry_manager)
+    routes_patient_portal.set_portal_dependencies(telemetry_manager, patients)
     routes_telemetry.set_manager(telemetry_manager)
     routes_scenarios.set_manager(telemetry_manager)
     routes_report.set_manager(telemetry_manager)
@@ -155,6 +170,9 @@ app.add_middleware(
 )
 
 # Include API routes
+app.include_router(routes_auth.router)
+app.include_router(routes_patient_portal.router)
+app.include_router(routes_billing.router)
 app.include_router(routes_patients.router)
 app.include_router(routes_telemetry.router)
 app.include_router(routes_alerts.router)
@@ -208,8 +226,30 @@ async def get_simulation_state() -> dict[str, Any]:
 
 
 @app.websocket("/ws/telemetry")
-async def websocket_telemetry_endpoint(websocket: WebSocket) -> None:
+async def websocket_telemetry_endpoint(
+    websocket: WebSocket,
+    token: Optional[str] = None,
+) -> None:
     """Real-time streaming WebSocket endpoint for client dashboards."""
+    # Enforce approval status gating: unapproved staff cannot access real-time clinical stream
+    if token:
+        if token.startswith("carepulse-staff-"):
+            uid_or_email = token.replace("carepulse-staff-", "")
+            user = staff_registry.get_by_id(uid_or_email) or staff_registry.get_by_email(uid_or_email)
+            if user:
+                if user.status != StaffStatus.APPROVED:
+                    await websocket.close(code=1008, reason="Pending hospital administrator approval.")
+                    return
+                if user.role == StaffRole.ACCOUNTANT:
+                    await websocket.close(code=1008, reason="Accounting staff are barred from raw clinical telemetry.")
+                    return
+        elif token.startswith("carepulse-patient-"):
+            uid_or_email = token.replace("carepulse-patient-", "")
+            p_user = patient_registry.get_by_id(uid_or_email) or patient_registry.get_by_email(uid_or_email)
+            if not p_user:
+                await websocket.close(code=1008, reason="Invalid patient credentials.")
+                return
+
     await telemetry_manager.connect(websocket)
     try:
         while True:

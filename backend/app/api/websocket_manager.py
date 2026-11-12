@@ -203,10 +203,10 @@ class TelemetryManager:
                 # 3. Apply scenario overlay if any
                 vitals = self.scenario_engine.apply(pid, vitals, self.tick_number)
 
-                # 4. Artifact detection
+                # 4. Artifact detection & Vital Reliability Assessment (runs BEFORE NEWS2 & ML)
                 motion_injected = vitals.get("_motion_injected", False)
                 sqi_result: SQIResult = self._artifact_detector.evaluate(
-                    vitals, self._prev_vitals.get(pid), motion_injected
+                    vitals, self._prev_vitals.get(pid), motion_injected, patient_id=pid
                 )
                 self._prev_vitals[pid] = dict(vitals)
 
@@ -216,7 +216,14 @@ class TelemetryManager:
                 if sqi_result.status == "LOW":
                     self.artifact_low_flags += 1
 
-                # 5. NEWS2 scoring
+                # Extract unreliable channels to prevent false clinical scoring
+                unreliable_params = [k for k, sig in sqi_result.signals.items() if not sig.reliable]
+                if "spo2" in unreliable_params:
+                    unreliable_params.append("oxygen_saturation")
+                if "heart_rate" in unreliable_params:
+                    unreliable_params.append("hr")
+
+                # 5. NEWS2 scoring (reliability-aware)
                 scale2 = profile.get("scale2_prescribed", False)
                 supp_o2 = vitals.get("supplemental_oxygen", {})
                 supp_o2_val = supp_o2.get("value", False) if isinstance(supp_o2, dict) else bool(supp_o2)
@@ -231,7 +238,7 @@ class TelemetryManager:
                     "supplemental_oxygen": supp_o2_val,
                 }
                 news2_result: NEWS2Result = calculate_news2(
-                    news2_input, scale2, supp_o2_val
+                    news2_input, scale2, supp_o2_val, unreliable_signals=unreliable_params
                 )
 
                 if news2_result.risk_level in ("MEDIUM", "HIGH"):
@@ -282,7 +289,7 @@ class TelemetryManager:
                     "respiratory_rate": _extract_value(vitals, "respiratory_rate"),
                 })
 
-                # 7. FHIR Observation (store locally)
+                # 7. FHIR Observation (store locally with data quality attribution)
                 now_iso = datetime.now(timezone.utc).isoformat()
                 obs_id: str | None = None
                 for vname in ("heart_rate", "oxygen_saturation", "respiratory_rate", "systolic_bp", "body_temperature"):
@@ -296,21 +303,15 @@ class TelemetryManager:
                     if obs_id is None:
                         obs_id = stored_id
 
-                # 8. Build broadcast payload
+                # 8. Build broadcast payload with full multi-channel reliability matrix
                 custom_status = self.scenario_engine.get_custom_event_status(pid, self.tick_number)
                 payload: dict[str, Any] = {
                     "timestamp": now_iso,
                     "patient_id": pid,
                     "tick_number": self.tick_number,
                     "vitals": _build_vitals_payload(vitals),
-                    "signal_quality": {
-                        "sqi": sqi_result.sqi,
-                        "status": sqi_result.status,
-                        "artifact_detected": sqi_result.artifact_detected,
-                        "motion_injected": sqi_result.motion_injected,
-                        "note": sqi_result.note,
-                    },
-                    "probe_removed": bool(vitals.get("probe_removed", False)),
+                    "signal_quality": sqi_result.model_dump(),
+                    "probe_removed": bool(vitals.get("probe_removed", False) or sqi_result.probe_removed),
                     "active_simulation_event": custom_status,
                     "news2": _news2_to_dict(news2_result),
                     "suggested_specialty": specialty_result.model_dump(),
@@ -360,7 +361,14 @@ class TelemetryManager:
         vitals["consciousness"] = {"value": "Alert", "source": "SIMULATED"}
         vitals["supplemental_oxygen"] = {"value": False, "source": "SIMULATED"}
 
-        # Run clinical engines
+        # Run clinical engines with signal reliability check
+        sqi_result = self._artifact_detector.evaluate(vitals, latest, False, patient_id=patient_id)
+        unreliable_params = [k for k, sig in sqi_result.signals.items() if not sig.reliable]
+        if "spo2" in unreliable_params:
+            unreliable_params.append("oxygen_saturation")
+        if "heart_rate" in unreliable_params:
+            unreliable_params.append("hr")
+
         news2_input = {
             "hr": _extract_value(vitals, "heart_rate"),
             "spo2": _extract_value(vitals, "oxygen_saturation"),
@@ -373,14 +381,15 @@ class TelemetryManager:
             news2_input,
             scale2_prescribed=scale2_prescribed,
             supplemental_oxygen=False,
+            unreliable_signals=unreliable_params,
         )
         pers_result = self._personalized.get_assessment(patient_id, news2_input)
         routed_alert = route_clinical_alert(
             patient=profile,
             news2_result=news2_result,
             vitals=vitals,
-            sqi_status="GOOD",
-            sqi_note=None,
+            sqi_status=sqi_result.status,
+            sqi_note=sqi_result.note,
             tick_number=self.tick_number,
         )
 
@@ -396,13 +405,7 @@ class TelemetryManager:
             "patient_id": patient_id,
             "tick_number": self.tick_number,
             "vitals": _build_vitals_payload(vitals),
-            "signal_quality": {
-                "sqi": 1.0,
-                "status": "GOOD",
-                "artifact_detected": False,
-                "motion_injected": False,
-                "note": f"Ingested via FHIR R4 API ({vital_name}={value} {unit})",
-            },
+            "signal_quality": sqi_result.model_dump(),
             "news2": _news2_to_dict(news2_result),
             "routed_alert": routed_alert.model_dump() if routed_alert else None,
             "ml_anomaly": ml_anomaly.model_dump(),

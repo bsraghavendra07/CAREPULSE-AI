@@ -33,11 +33,32 @@ export interface Vitals {
   [key: string]: VitalValue | any;
 }
 
+export type SignalState = 'VALID' | 'SUSPECT' | 'ARTIFACT' | 'PROBE_REMOVED' | 'FLATLINE' | 'MISSING';
+
+export interface SignalReliability {
+  parameter: string;
+  status: SignalState;
+  reliable: boolean;
+  current_value?: number | null;
+  reason?: string | null;
+  implausible?: boolean;
+  flatline?: boolean;
+  near_flatline?: boolean;
+  artifact_type?: string | null;
+}
+
 export interface SignalQuality {
   sqi: number;
   status: SQIStatus;
   artifact_detected: boolean;
   motion_injected: boolean;
+  probe_removed?: boolean;
+  clinical_alert_suppressed?: boolean;
+  suppression_reason?: string | null;
+  sensor_alert?: string | null;
+  is_genuine_deterioration?: boolean;
+  genuine_deterioration_note?: string | null;
+  signals?: Record<string, SignalReliability>;
   note: string | null;
 }
 
@@ -46,14 +67,43 @@ export interface NEWS2Score {
   scale_used: ScaleUsed;
   scale2_prescribed: boolean;
   scale2_justification: string | null;
+  target_spo2_range?: string;
   risk_level: RiskLevel;
   has_red_score: boolean;
   red_score_parameter: string | null;
   sub_scores: Record<string, number>;
+  components?: Record<string, number | null>;
+  missing_parameters?: string[];
+  primary_contributors?: string[];
   triage_tier?: TriageTier;
   alert_reason?: string;
   clinical_action?: string;
   suggested_specialty?: SuggestedSpecialty;
+}
+
+export interface BaselineMetric {
+  parameter: string;
+  baseline_mean?: number | null;
+  current_value?: number | null;
+  absolute_change?: number | null;
+  percentage_change?: number | null;
+  trend_direction: string; // "↓ Declining" | "↑ Increasing" | "→ Stable" | "Insufficient data"
+  consecutive_steps?: number;
+  status: string;
+  is_deteriorating?: boolean;
+  samples_count?: number;
+}
+
+export interface GradualDeteriorationAlert {
+  detected: boolean;
+  parameter?: string | null;
+  parameter_label?: string | null;
+  baseline_value?: number | null;
+  current_value?: number | null;
+  trend?: string | null;
+  alert_message: string;
+  clinical_explanation?: string;
+  distinction_disclaimer?: string;
 }
 
 export interface PersonalizedInsight {
@@ -62,6 +112,8 @@ export interface PersonalizedInsight {
   z_scores: Record<string, number>;
   baseline: Record<string, number>;
   advisory_note: string;
+  trends?: Record<string, BaselineMetric>;
+  gradual_deterioration?: GradualDeteriorationAlert;
 }
 
 export interface ActiveSimulationEvent {

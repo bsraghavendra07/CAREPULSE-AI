@@ -1,50 +1,187 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 96%;
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 96%;
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 96%;
-    --primary: 210 100% 52%;
+    --background: 168 50% 98%;   /* #F4FBF9 */
+    --foreground: 222 47% 15%;   /* #131E3A - Midnight Navy */
+    --card: 0 0% 100%;           /* #FFFFFF */
+    --card-foreground: 222 47% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 15%;
+    --primary: 173 100% 33%;     /* #00A896 - CarePulse Teal */
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 55%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 96%;
+    --secondary: 171 45% 94%;    /* #E6F7F5 - Soft Mint */
+    --secondary-foreground: 174 91% 25%; /* #067A6E */
+    --muted: 171 45% 94%;
+    --muted-foreground: 215 16% 47%; /* #64748B */
+    --accent: 171 45% 94%;
+    --accent-foreground: 222 47% 15%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 210 100% 52%;
-    --radius: 0.5rem;
+    --border: 214 32% 91%;       /* #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 173 100% 33%;
+    --radius: 0.75rem;
   }
 }
 
 * {
-  border-color: hsl(var(--border, 217 33% 17%));
+  border-color: #E2E8F0;
 }
 
 body {
-  background-color: #0a0d14;
-  color: #f1f5f9;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #F4FBF9;
+  color: #131E3A;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── CarePulse Official Brand Colors & Gradient Utilities ── */
+.bg-cp-gradient {
+  background: linear-gradient(135deg, #00D2C4 0%, #00B4A0 50%, #067A6E 100%);
+}
+
+.bg-cp-gradient-subtle {
+  background: linear-gradient(135deg, rgba(0, 210, 196, 0.08) 0%, rgba(6, 122, 110, 0.04) 100%);
+}
+
+.text-cp-navy {
+  color: #131E3A;
+}
+
+.text-cp-teal {
+  color: #00A896;
+}
+
+.text-cp-cyan {
+  color: #00D2C4;
+}
+
+.text-cp-darkteal {
+  color: #067A6E;
+}
+
+.border-cp-subtle {
+  border-color: #CCFBF1;
+}
+
+/* CarePulse Signature Gradient Pill Button */
+.btn-cp-primary {
+  background: linear-gradient(135deg, #00D2C4 0%, #00A896 100%);
+  color: #FFFFFF;
+  border-radius: 9999px;
+  padding: 0.65rem 1.5rem;
+  font-weight: 700;
+  box-shadow: 0 4px 14px 0 rgba(0, 168, 150, 0.35);
+  transition: all 0.2s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.btn-cp-primary:hover {
+  background: linear-gradient(135deg, #00B4A0 0%, #067A6E 100%);
+  box-shadow: 0 6px 20px 0 rgba(0, 168, 150, 0.45);
+  transform: translateY(-1px);
+}
+
+/* CarePulse Secondary Mint Button */
+.btn-cp-secondary {
+  background-color: #E6F7F5;
+  color: #067A6E;
+  border: 1px solid #B2EBE4;
+  border-radius: 9999px;
+  padding: 0.65rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.btn-cp-secondary:hover {
+  background-color: #D0F2EE;
+  color: #04544C;
+  transform: translateY(-1px);
+}
+
+/* Inverted high-contrast pill style with teal gradient */
+.pill-invert {
+  background: linear-gradient(135deg, #00D2C4 0%, #00A896 100%);
+  color: #FFFFFF;
+  border-radius: 0.75rem;
+  padding: 0.2rem 0.65rem;
+  display: inline-block;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 168, 150, 0.25);
+}
+
+.pill-btn-black {
+  background-color: #131E3A;
+  color: #FFFFFF;
+  border-radius: 9999px;
+  padding: 0.65rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.15s ease-in-out;
+}
+.pill-btn-black:hover {
+  background-color: #0F172A;
+  transform: translateY(-1px);
+}
+
+.pill-btn-white {
+  background-color: #FFFFFF;
+  color: #131E3A;
+  border: 1px solid #E2E8F0;
+  border-radius: 9999px;
+  padding: 0.65rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.15s ease-in-out;
+}
+.pill-btn-white:hover {
+  background-color: #EFECE4;
+}
+
+/* Subtle clean shadows for cards */
+.shadow-minimal {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+}
+
+.shadow-card-elevated {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
 }
 
 /* Live pulse animation for active vital signs */
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
-.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 
-/* Risk level badge glow effects */
-.risk-glow-green  { box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
-.risk-glow-amber  { box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
-.risk-glow-red    { box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
 
+/* Clinical risk badge indicators */
+.risk-glow-green {
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.25);
+}
+
+.risk-glow-amber {
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+}
+
+.risk-glow-red {
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}

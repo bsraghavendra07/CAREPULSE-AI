@@ -6,7 +6,14 @@ import { PatientProfile } from './types/patient';
 import { TelemetryTick } from './types/telemetry';
 import { setSimulationSpeed } from './lib/api';
 import { AuthProvider, useAuth } from './context/AuthContext';
+
+import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { PatientLoginPage } from './pages/PatientLoginPage';
+import { PatientRegisterPage } from './pages/PatientRegisterPage';
+import { PatientDashboardPage } from './pages/PatientDashboardPage';
+import { AccountantBillingPage } from './pages/AccountantBillingPage';
 
 import { AppLayout } from './components/layout/AppLayout';
 import { DashboardPage } from './pages/DashboardPage';
@@ -40,17 +47,17 @@ function AuthenticatedRoutes({
   selectedPatientModal,
   setSelectedPatientModal,
 }: AuthenticatedRoutesProps) {
-  const { user, staff, loading } = useAuth();
+  const { user, staff, patient, loading, isAccountant } = useAuth();
 
-  // Loading Session State
+  // Loading Session State (Light SaaS)
   if (loading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#080D16] text-white">
+      <div className="flex h-screen w-screen items-center justify-center bg-[#F0F7FF] text-[#111827]">
         <div className="flex flex-col items-center space-y-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/20 border border-emerald-500/30">
-            <Activity className="h-6 w-6 text-emerald-400 animate-pulse" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#D9F0FF] border border-[#4A90E2]/30 shadow-sm">
+            <Activity className="h-6 w-6 text-[#4A90E2] animate-pulse" />
           </div>
-          <div className="text-xs font-semibold text-slate-300 tracking-wide">
+          <div className="text-xs font-semibold text-[#4B5563] tracking-wide">
             Authenticating CarePulse Session...
           </div>
         </div>
@@ -58,20 +65,57 @@ function AuthenticatedRoutes({
     );
   }
 
-  // Unauthenticated -> Show Dedicated Healthcare Login Homepage
-  if (!user && !staff) {
+  // 1. Authenticated as PATIENT -> Dedicated Patient Portal
+  if (patient) {
     return (
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/patient-dashboard" element={<PatientDashboardPage />} />
+        <Route path="*" element={<Navigate to="/patient-dashboard" replace />} />
       </Routes>
     );
   }
 
-  // Authenticated -> Full Clinical Dashboard & Navigation Routes
+  // 2. Authenticated as ACCOUNTANT -> Dedicated Hospital Financial Portal
+  if (staff && isAccountant) {
+    return (
+      <Routes>
+        <Route path="/billing" element={<AccountantBillingPage />} />
+        <Route path="*" element={<Navigate to="/billing" replace />} />
+      </Routes>
+    );
+  }
+
+  // 3. Unauthenticated -> Show Landing Page & Auth Portals
+  if (!user && !staff && !patient) {
+    return (
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        
+        {/* Hospital Staff Authentication */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login/staff" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register/staff" element={<RegisterPage />} />
+        
+        {/* Patient Authentication & Portal */}
+        <Route path="/login/patient" element={<PatientLoginPage />} />
+        <Route path="/register/patient" element={<PatientRegisterPage />} />
+        <Route path="/patient-dashboard" element={<PatientDashboardPage />} />
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
+  // 4. Authenticated Clinical Staff -> Full Clinical Telemetry & Monitoring
   return (
     <Routes>
-      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login/staff" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/register" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/register/staff" element={<Navigate to="/dashboard" replace />} />
+
       <Route
         element={
           <AppLayout
@@ -88,7 +132,7 @@ function AuthenticatedRoutes({
       >
         {/* 1. DASHBOARD */}
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <DashboardPage
               patients={patientList}
@@ -130,7 +174,7 @@ function AuthenticatedRoutes({
           element={<FhirPage patients={patientList} />}
         />
 
-        {/* 5. SPECIALIST ALERT CENTER (Feature 3) */}
+        {/* 5. SPECIALIST ALERT CENTER */}
         <Route
           path="/alerts"
           element={
@@ -148,7 +192,7 @@ function AuthenticatedRoutes({
           element={<PerformanceReportPage />}
         />
 
-        {/* 6. DETERIORATION TESTS */}
+        {/* 7. DETERIORATION TESTS */}
         <Route
           path="/scenarios"
           element={
@@ -162,7 +206,7 @@ function AuthenticatedRoutes({
           }
         />
 
-        {/* 7. SIMULATION EVENTS (PS 3.2 Wearable Simulator) */}
+        {/* 8. SIMULATION EVENTS (PS 3.2 Wearable Simulator) */}
         <Route
           path="/simulation-events"
           element={
@@ -179,9 +223,25 @@ function AuthenticatedRoutes({
           path="/wearable"
           element={<Navigate to="/simulation-events" replace />}
         />
+        <Route
+          path="/reports"
+          element={<Navigate to="/report" replace />}
+        />
+        <Route
+          path="/tests"
+          element={<Navigate to="/scenarios" replace />}
+        />
+        <Route
+          path="/events"
+          element={<Navigate to="/simulation-events" replace />}
+        />
+        <Route
+          path="/patient-dashboard"
+          element={<PatientDashboardPage />}
+        />
 
         {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   );

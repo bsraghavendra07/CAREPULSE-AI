@@ -9,6 +9,7 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import {
   getAuth,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
   onAuthStateChanged,
@@ -40,6 +41,13 @@ const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) 
 export const auth: Auth = getAuth(app);
 
 // Authentication helper functions
+export async function registerWithEmail(email: string, pass: string) {
+  if (!isConfiguredFirebaseKey) {
+    return null;
+  }
+  return createUserWithEmailAndPassword(auth, email, pass);
+}
+
 export async function loginWithEmail(email: string, pass: string, rememberMe: boolean = true) {
   if (!isConfiguredFirebaseKey) {
     // Return null so AuthContext handles local authorized hospital staff profile

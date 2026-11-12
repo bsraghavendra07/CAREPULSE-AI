@@ -35,8 +35,8 @@ export function Header({ connected, speedFactor = 1 }: HeaderProps) {
               CLINICAL CDS
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground hidden sm:block">
-            Smarter Monitoring. Earlier Awareness. Safer Recovery.
+          <p className="text-xs text-[#00A896] font-medium hidden sm:block">
+            Always Watching. Always Caring.
           </p>
         </div>
       </div>

@@ -52,7 +52,7 @@ const SCENARIOS: ScenarioDef[] = [
     expectedResponse: 'Triggers URGENT clinical escalation and sepsis pathway.',
     badgeColor: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
     borderColor: 'border-rose-500/30 bg-rose-500/5',
-    buttonBg: 'bg-rose-600 hover:bg-rose-500 text-white',
+    buttonBg: 'bg-rose-600 hover:bg-rose-500 text-[#111827]',
   },
   {
     id: 'copd_exacerbation',
@@ -64,7 +64,7 @@ const SCENARIOS: ScenarioDef[] = [
     expectedResponse: 'Evaluated under Scale 2 (88-92% target).',
     badgeColor: 'text-pink-400 bg-pink-500/10 border-pink-500/30',
     borderColor: 'border-pink-500/30 bg-pink-500/5',
-    buttonBg: 'bg-pink-600 hover:bg-pink-500 text-white',
+    buttonBg: 'bg-pink-600 hover:bg-pink-500 text-[#111827]',
   },
   {
     id: 'cardiac_decompensation',
@@ -76,7 +76,7 @@ const SCENARIOS: ScenarioDef[] = [
     expectedResponse: 'Personalized advisory fires ~55 minutes before fixed thresholds.',
     badgeColor: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
     borderColor: 'border-orange-500/30 bg-orange-500/5',
-    buttonBg: 'bg-orange-600 hover:bg-orange-500 text-white',
+    buttonBg: 'bg-orange-600 hover:bg-orange-500 text-[#111827]',
   },
   {
     id: 'motion_artifact',
@@ -100,7 +100,7 @@ const SCENARIOS: ScenarioDef[] = [
     expectedResponse: 'Flags Technical Fault / Probe Detachment (SQI LOW).',
     badgeColor: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
     borderColor: 'border-purple-500/30 bg-purple-500/5',
-    buttonBg: 'bg-purple-600 hover:bg-purple-500 text-white',
+    buttonBg: 'bg-purple-600 hover:bg-purple-500 text-[#111827]',
   },
   {
     id: 'normal_recovery',
@@ -110,9 +110,9 @@ const SCENARIOS: ScenarioDef[] = [
     description:
       'Maintains clean physiological homeostasis (HR ~68, SpO₂ ~98%, Temp ~36.5°C). Demonstrates zero false alarms in a recovering post-op patient.',
     expectedResponse: 'NEWS2 Score = 0 (ROUTINE), Recovery Index = 100%.',
-    badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-    borderColor: 'border-emerald-500/30 bg-emerald-500/5',
-    buttonBg: 'bg-emerald-600 hover:bg-emerald-500 text-black font-bold',
+    badgeColor: 'text-[#4A90E2] bg-[#D9F0FF] text-[#4A90E2] border-[#4A90E2]/30',
+    borderColor: 'border-[#4A90E2]/30 bg-emerald-500/5',
+    buttonBg: 'bg-emerald-600 hover:bg-[#4A90E2] text-white font-bold',
   },
 ];
 
@@ -182,13 +182,13 @@ export function DeteriorationTestsPage({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#1a1f2c] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E5E7EB] pb-4">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center space-x-2.5">
+          <h2 className="text-xl font-bold text-[#111827] flex items-center space-x-2.5">
             <Flame className="h-5 w-5 text-orange-400" />
             <span>Clinical Deterioration Simulation Deck</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[#4B5563] mt-1">
             Real-time acute scenario injection into continuous physiological streams (Requirement 6)
           </p>
         </div>
@@ -196,9 +196,9 @@ export function DeteriorationTestsPage({
         {/* Global Controls */}
         <div className="flex items-center space-x-3">
           {/* Simulation Speed */}
-          <div className="flex items-center space-x-2 bg-[#11151f] border border-[#1e2433] px-3 py-1.5 rounded-xl text-xs">
-            <Gauge className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="text-slate-400 font-medium">Speed:</span>
+          <div className="flex items-center space-x-2 bg-[#F0F7FF] border border-[#E5E7EB] px-3 py-1.5 rounded-xl text-xs">
+            <Gauge className="h-3.5 w-3.5 text-[#4A90E2]" />
+            <span className="text-[#4B5563] font-medium">Speed:</span>
             <div className="flex items-center space-x-1">
               {[1, 2, 5, 10].map((s) => (
                 <button
@@ -206,8 +206,8 @@ export function DeteriorationTestsPage({
                   onClick={() => onSpeedChange(s)}
                   className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold transition-colors ${
                     speedFactor === s
-                      ? 'bg-emerald-500 text-black'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-[#4A90E2] text-white'
+                      : 'text-[#4B5563] hover:text-[#111827]'
                   }`}
                 >
                   {s}x
@@ -219,7 +219,7 @@ export function DeteriorationTestsPage({
           {/* Reset All */}
           <button
             onClick={handleResetAll}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-[#F0F7FF]/60 hover:bg-slate-700 text-[#111827] text-xs font-semibold transition-colors"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span>Reset Entire Ward</span>
@@ -229,9 +229,9 @@ export function DeteriorationTestsPage({
 
       {/* Action Toast Feedback */}
       {actionFeedback && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+        <div className="p-3 bg-[#D9F0FF] text-[#4A90E2] border border-[#4A90E2]/30 rounded-xl text-[#4A90E2] text-xs font-semibold flex items-center justify-between animate-in fade-in">
           <span>✓ {actionFeedback}</span>
-          <button onClick={() => setActionFeedback(null)} className="text-slate-400 hover:text-white">✕</button>
+          <button onClick={() => setActionFeedback(null)} className="text-[#4B5563] hover:text-[#111827]">✕</button>
         </div>
       )}
 
@@ -259,23 +259,23 @@ export function DeteriorationTestsPage({
                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${sc.badgeColor}`}>
                       Scenario {sc.name}
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-1.5">{sc.name}</h3>
-                    <div className="text-[11px] text-slate-400 font-medium">{sc.subtitle}</div>
+                    <h3 className="text-sm font-bold text-[#111827] mt-1.5">{sc.name}</h3>
+                    <div className="text-[11px] text-[#4B5563] font-medium">{sc.subtitle}</div>
                   </div>
 
                   {isActive && (
-                    <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse">
+                    <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D9F0FF] text-[#4A90E2] text-[#4A90E2] border border-[#4A90E2]/30 animate-pulse">
                       <span>RUNNING</span>
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs text-slate-300 leading-relaxed">{sc.description}</p>
+                <p className="text-xs text-[#4B5563] leading-relaxed">{sc.description}</p>
 
-                <div className="rounded-xl bg-[#0c1017] border border-[#1a1f2c] p-2.5 text-[11px] text-slate-400 space-y-1">
+                <div className="rounded-xl bg-[#F0F7FF] border border-[#E5E7EB] p-2.5 text-[11px] text-[#4B5563] space-y-1">
                   <div><strong>Expected:</strong> {sc.expectedResponse}</div>
                   {isActive && (
-                    <div className="text-emerald-400 font-mono font-bold pt-1">
+                    <div className="text-[#4A90E2] font-mono font-bold pt-1">
                       Active Telemetry NEWS2 Score: {score} pts ({currentTick?.news2?.triage_tier})
                     </div>
                   )}
@@ -283,7 +283,7 @@ export function DeteriorationTestsPage({
 
                 {/* Target Patient Selector */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">Target Patient</label>
+                  <label className="text-[10px] text-[#4B5563] block mb-1">Target Patient</label>
                   <select
                     value={targetPid}
                     onChange={(e) =>
@@ -292,7 +292,7 @@ export function DeteriorationTestsPage({
                         [sc.id]: e.target.value,
                       }))
                     }
-                    className="w-full h-8 rounded-lg border border-[#1e2433] bg-[#11151f] px-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full h-8 rounded-lg border border-[#E5E7EB] bg-[#F0F7FF] px-2 text-xs text-[#111827] focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   >
                     {patients.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -316,7 +316,7 @@ export function DeteriorationTestsPage({
                 {isActive && (
                   <button
                     onClick={() => handleReset(targetPid)}
-                    className="px-3 py-2 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+                    className="px-3 py-2 rounded-xl border border-slate-700 bg-[#F0F7FF]/80 hover:bg-slate-700 text-[#111827] text-xs font-semibold"
                     title="Clear Scenario"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
