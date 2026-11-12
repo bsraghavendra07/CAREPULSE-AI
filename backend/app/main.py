@@ -20,6 +20,7 @@ from app.api import (
     routes_patients,
     routes_report,
     routes_scenarios,
+    routes_sms,
     routes_telemetry,
 )
 from app.api.websocket_manager import TelemetryManager
@@ -115,6 +116,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Inject dependencies into routes
     routes_patients.set_patients(patients)
+    routes_sms.set_patients(patients)
     routes_telemetry.set_manager(telemetry_manager)
     routes_scenarios.set_manager(telemetry_manager)
     routes_report.set_manager(telemetry_manager)
@@ -158,6 +160,7 @@ app.add_middleware(
 app.include_router(routes_patients.router)
 app.include_router(routes_telemetry.router)
 app.include_router(routes_alerts.router)
+app.include_router(routes_sms.router)
 app.include_router(routes_ml.router)
 app.include_router(routes_scenarios.router)
 app.include_router(routes_report.router)

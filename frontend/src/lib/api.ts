@@ -2,6 +2,7 @@ import { PatientProfile } from '../types/patient';
 import { PerformanceReport } from '../types/telemetry';
 import { FHIRBundle } from '../types/fhir';
 import { RoutedAlert, AlertStats } from '../types/alert';
+import { SMSAlertRecord, SMSGatewayConfig, SendTestSMSPayload } from '../types/sms';
 
 const API_BASE = '/api';
 
@@ -122,5 +123,45 @@ export async function resolveAlert(alertId: string, clinicianName: string = 'Dr.
   if (!res.ok) throw new Error(`Failed to resolve alert ${alertId}: ${res.statusText}`);
   return res.json();
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// EMERGENCY CELLULAR SMS API
+// ─────────────────────────────────────────────────────────────────────
+
+export async function fetchDispatchedSMS(patientId?: string): Promise<SMSAlertRecord[]> {
+  const query = patientId ? `?patient_id=${patientId}` : '';
+  const res = await fetch(`${API_BASE}/sms/alerts${query}`);
+  if (!res.ok) throw new Error(`Failed to fetch SMS records: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchLatestSMS(): Promise<SMSAlertRecord | null> {
+  const res = await fetch(`${API_BASE}/sms/alerts/latest`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function fetchSMSById(smsId: string): Promise<SMSAlertRecord> {
+  const res = await fetch(`${API_BASE}/sms/alerts/${smsId}`);
+  if (!res.ok) throw new Error(`Failed to fetch SMS ${smsId}: ${res.statusText}`);
+  return res.json();
+}
+
+export async function sendTestEmergencySMS(payload: SendTestSMSPayload): Promise<SMSAlertRecord> {
+  const res = await fetch(`${API_BASE}/sms/send-test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to send test emergency SMS: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchSMSConfig(): Promise<SMSGatewayConfig> {
+  const res = await fetch(`${API_BASE}/sms/config`);
+  if (!res.ok) throw new Error(`Failed to fetch SMS config: ${res.statusText}`);
+  return res.json();
+}
+
 
 

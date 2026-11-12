@@ -19,11 +19,13 @@ import {
   X,
   ShieldAlert,
   BellRing,
+  Smartphone,
 } from 'lucide-react';
 import { News2ScorePanel } from '../patient-detail/News2ScorePanel';
 import { PersonalizedPanel } from '../patient-detail/PersonalizedPanel';
 import { ArtifactBanner } from '../patient-detail/ArtifactBanner';
 import { VitalsChart } from '../patient-detail/VitalsChart';
+import { EmergencySMSModal } from '../alerts/EmergencySMSModal';
 import { clearScenario } from '../../lib/api';
 
 interface AppLayoutProps {
@@ -49,6 +51,7 @@ export function AppLayout({
 }: AppLayoutProps) {
   const { staff, logout } = useAuth();
   const [resetToast, setResetToast] = useState<string | null>(null);
+  const [showSmsModal, setShowSmsModal] = useState<boolean>(false);
 
   const handleClearScenario = async (pid: string) => {
     try {
@@ -257,6 +260,20 @@ export function AppLayout({
                 className="h-9 w-64 rounded-xl border border-[#1e2433] bg-[#11151f] pl-9 pr-3 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
+            {/* Emergency SMS Gateway Dispatch Button */}
+            <button
+              onClick={() => setShowSmsModal(true)}
+              className="h-9 px-3 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 flex items-center space-x-2 text-xs font-semibold shadow-sm transition-all"
+              title="Emergency Cellular SMS Gateway & Clinical Report Dispatch"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              </span>
+              <Smartphone className="h-4 w-4 text-rose-400" />
+              <span className="hidden sm:inline">Emergency SMS</span>
+            </button>
+
             <div className="h-9 w-9 rounded-xl border border-[#1e2433] bg-[#11151f] flex items-center justify-center text-slate-400 hover:text-white cursor-pointer">
               <Heart className="h-4 w-4" />
             </div>
@@ -354,6 +371,13 @@ export function AppLayout({
           </div>
         </div>
       )}
+
+      {/* Emergency SMS Dispatch & Audit Modal */}
+      <EmergencySMSModal
+        isOpen={showSmsModal}
+        onClose={() => setShowSmsModal(false)}
+        patients={patients}
+      />
     </div>
   );
 }

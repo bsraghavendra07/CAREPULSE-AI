@@ -33,8 +33,10 @@ import {
   Check,
   Eye,
   SlidersHorizontal,
+  Smartphone,
 } from 'lucide-react';
 import { getDepartmentConfig } from './PatientsPage';
+import { EmergencySMSModal } from '../components/alerts/EmergencySMSModal';
 
 interface SpecialistAlertCenterPageProps {
   patients: PatientProfile[];
@@ -56,6 +58,8 @@ export function SpecialistAlertCenterPage({
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const [smsModalOpen, setSmsModalOpen] = useState<boolean>(false);
+  const [selectedPatientForSMS, setSelectedPatientForSMS] = useState<string | undefined>(undefined);
 
   // Load alerts and statistics from backend
   const loadData = async (isManual = false) => {
@@ -171,6 +175,23 @@ export function SpecialistAlertCenterPage({
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* Emergency SMS Center Trigger */}
+          <button
+            onClick={() => {
+              setSelectedPatientForSMS(undefined);
+              setSmsModalOpen(true);
+            }}
+            className="flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-300 shadow-sm transition-all"
+            title="Cellular Emergency SMS Notification System"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+            </span>
+            <Smartphone className="h-3.5 w-3.5 text-rose-400" />
+            <span>Emergency SMS Center</span>
+          </button>
+
           <button
             onClick={() => loadData(true)}
             disabled={refreshing}
@@ -580,6 +601,19 @@ export function SpecialistAlertCenterPage({
                       </button>
                     )}
 
+                    {/* Emergency SMS View/Dispatch */}
+                    <button
+                      onClick={() => {
+                        setSelectedPatientForSMS(alert.patient_id);
+                        setSmsModalOpen(true);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold transition-all flex items-center space-x-1"
+                      title="View Dispatched Cellular SMS & Clinical Report"
+                    >
+                      <Smartphone className="h-3.5 w-3.5 text-rose-400" />
+                      <span>SMS Report</span>
+                    </button>
+
                     {/* Acknowledge Action */}
                     {alert.status === 'PENDING' && (
                       <button
@@ -619,6 +653,14 @@ export function SpecialistAlertCenterPage({
           })}
         </div>
       )}
+
+      {/* Emergency SMS Center Modal */}
+      <EmergencySMSModal
+        isOpen={smsModalOpen}
+        onClose={() => setSmsModalOpen(false)}
+        patients={patients}
+        initialPatientId={selectedPatientForSMS}
+      />
     </div>
   );
 }
