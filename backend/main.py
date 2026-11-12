@@ -261,17 +261,18 @@ async def ingest_fhir_observation(obs: Dict[str, Any]):
     val = val_quantity.get("value")
 
     # Map to vital sign channel
+    from backend.fhir.models import LOINC_SPO2_ALT
     hr, spo2, rr, temp = None, None, None, None
     if loinc_code == LOINC_HEART_RATE:
         hr = float(val) if val is not None else None
-    elif loinc_code == LOINC_SPO2:
+    elif loinc_code in (LOINC_SPO2, LOINC_SPO2_ALT):
         spo2 = float(val) if val is not None else None
     elif loinc_code == LOINC_RESPIRATORY_RATE:
         rr = float(val) if val is not None else None
     elif loinc_code == LOINC_BODY_TEMPERATURE:
         temp = float(val) if val is not None else None
 
-    fhir_store.save_observation(obs)
+    fhir_store.save_observation(obs, sync_hapi=True)
     
     # Process through pipeline
     result = process_telemetry_reading(patient_id, hr, spo2, rr, temp, source_tag="FHIR_R4_REST")
@@ -279,10 +280,19 @@ async def ingest_fhir_observation(obs: Dict[str, Any]):
     return {"status": "SUCCESS", "observation_id": obs.get("id"), "processed": result}
 
 
+@app.get("/fhir/Observation/{obs_id}")
+def get_single_fhir_observation(obs_id: str):
+    """Retrieves a single FHIR R4 Observation by ID."""
+    obs = fhir_store.get_observation_by_id(obs_id)
+    if not obs:
+        raise HTTPException(status_code=404, detail=f"Observation {obs_id} not found")
+    return obs
+
+
 @app.get("/fhir/Observation")
 def search_fhir_observations(
     subject: Optional[str] = Query(None, description="e.g. Patient/P-001"),
-    code: Optional[str] = Query(None, description="LOINC code, e.g. 2708-6"),
+    code: Optional[str] = Query(None, description="LOINC code, e.g. 2708-6 or 8867-4"),
     _limit: int = 50
 ):
     """FHIR R4 search endpoint for Observations."""
@@ -298,15 +308,132 @@ def search_fhir_observations(
 
 @app.post("/fhir/Bundle")
 async def ingest_fhir_bundle(bundle: Dict[str, Any]):
-    """Ingests a FHIR R4 Bundle containing Observations."""
+    """Ingests a FHIR R4 Bundle containing Vital Signs Observations."""
     entries = bundle.get("entry", [])
     processed_count = 0
+    from backend.fhir.models import LOINC_SPO2_ALT
+    
+    patient_vitals_agg: Dict[str, Dict[str, Any]] = {}
+    
     for entry in entries:
         res = entry.get("resource", {})
         if res.get("resourceType") == "Observation":
-            fhir_store.save_observation(res)
+            fhir_store.save_observation(res, sync_hapi=True)
             processed_count += 1
-    return {"status": "SUCCESS", "observations_ingested": processed_count}
+            
+            subj_ref = res.get("subject", {}).get("reference", "Patient/P-001")
+            p_id = subj_ref.replace("Patient/", "").strip()
+            if p_id not in patient_vitals_agg:
+                patient_vitals_agg[p_id] = {"hr": None, "spo2": None, "rr": None, "temp": None}
+                
+            codings = res.get("code", {}).get("coding", [])
+            code = codings[0].get("code") if codings else None
+            val = res.get("valueQuantity", {}).get("value")
+            if val is not None:
+                val = float(val)
+                if code == LOINC_HEART_RATE:
+                    patient_vitals_agg[p_id]["hr"] = val
+                elif code in (LOINC_SPO2, LOINC_SPO2_ALT):
+                    patient_vitals_agg[p_id]["spo2"] = val
+                elif code == LOINC_RESPIRATORY_RATE:
+                    patient_vitals_agg[p_id]["rr"] = val
+                elif code == LOINC_BODY_TEMPERATURE:
+                    patient_vitals_agg[p_id]["temp"] = val
+
+    # Execute pipeline updates for affected patients
+    last_result = None
+    for p_id, v in patient_vitals_agg.items():
+        last_result = process_telemetry_reading(
+            p_id, v["hr"], v["spo2"], v["rr"], v["temp"], source_tag="FHIR_R4_BUNDLE"
+        )
+        await ws_manager.broadcast({"type": "VITAL_UPDATE", "data": last_result})
+
+    return {
+        "status": "SUCCESS", 
+        "observations_ingested": processed_count,
+        "patients_updated": list(patient_vitals_agg.keys()),
+        "latest_eval": last_result
+    }
+
+
+@app.get("/fhir/metadata")
+def get_fhir_capability_statement():
+    """FHIR R4 CapabilityStatement identifying HAPI and HL7 R4 compliance."""
+    return {
+        "resourceType": "CapabilityStatement",
+        "status": "active",
+        "date": datetime.now(timezone.utc).isoformat(),
+        "publisher": "CarePulse AI - Team #1CodeRangers",
+        "kind": "instance",
+        "software": {
+            "name": "CarePulse AI FHIR R4 Engine & HAPI Bridge",
+            "version": "1.0.0"
+        },
+        "fhirVersion": "4.0.1",
+        "format": ["application/fhir+json", "application/json"],
+        "rest": [
+            {
+                "mode": "server",
+                "resource": [
+                    {
+                        "type": "Observation",
+                        "profile": "http://hl7.org/fhir/StructureDefinition/vitalsigns",
+                        "interaction": [{"code": "read"}, {"code": "search-type"}, {"code": "create"}],
+                        "searchParam": [{"name": "subject", "type": "reference"}, {"name": "code", "type": "token"}]
+                    },
+                    {
+                        "type": "Patient",
+                        "profile": "http://hl7.org/fhir/StructureDefinition/Patient",
+                        "interaction": [{"code": "read"}, {"code": "search-type"}]
+                    }
+                ]
+            }
+        ]
+    }
+
+
+@app.get("/api/fhir/status")
+def get_fhir_service_status():
+    """Returns comprehensive statistics on stored FHIR observations and HAPI server sync."""
+    return fhir_store.get_stats()
+
+
+@app.post("/api/fhir/test-sample")
+async def inject_sample_fhir_observation(body: Dict[str, Any] = Body(...)):
+    """
+    Helper to test FHIR R4 ingestion directly from the UI or test runners:
+    body: { patient_id: "P-001", vital_type: "HEART_RATE"|"SPO2"|"RESPIRATORY_RATE"|"TEMPERATURE", value: float }
+    """
+    patient_id = body.get("patient_id", "P-003")
+    vital_type = body.get("vital_type", "SPO2").upper()
+    val = float(body.get("value", 95.0))
+    
+    loinc_map = {
+        "HEART_RATE": LOINC_HEART_RATE,
+        "SPO2": LOINC_SPO2,
+        "RESPIRATORY_RATE": LOINC_RESPIRATORY_RATE,
+        "TEMPERATURE": LOINC_BODY_TEMPERATURE
+    }
+    
+    target_loinc = loinc_map.get(vital_type, LOINC_SPO2)
+    obs = create_fhir_observation(patient_id, target_loinc, val)
+    return await ingest_fhir_observation(obs)
+
+
+@app.post("/api/fhir/sync-hapi")
+def trigger_hapi_sync():
+    """Triggers sync of all stored observations to configured external HAPI FHIR server."""
+    synced = 0
+    for obs in fhir_store.observations:
+        if fhir_store._sync_to_hapi(obs):
+            synced += 1
+    return {
+        "status": "COMPLETED",
+        "synced": synced,
+        "total": len(fhir_store.observations),
+        "target_hapi_url": fhir_store.external_hapi_url,
+        "last_status": fhir_store.hapi_last_status
+    }
 
 
 @app.get("/fhir/Patient")

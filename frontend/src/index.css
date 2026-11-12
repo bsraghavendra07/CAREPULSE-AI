@@ -3,21 +3,252 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  :root {
+    --cp-bg: #080B10;
+    --cp-sidebar: #10151C;
+    --cp-card: #141A23;
+    --cp-elevated: #1A222D;
+    --cp-border: #252D38;
+    --cp-border-subtle: #1B222C;
+    --cp-teal: #20C997;
+    --cp-blue: #36BFFA;
+    --cp-success: #10B981;
+    --cp-warning: #F59E0B;
+    --cp-urgent: #EF4444;
+    --cp-text-primary: #F8FAFC;
+    --cp-text-secondary: #94A3B8;
+    --cp-text-muted: #64748B;
   }
-  code, pre {
+
+  body {
+    background-color: #080B10;
+    color: #F8FAFC;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+
+  code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
 }
 
-/* Custom pulse animations */
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #080B10;
+}
+::-webkit-scrollbar-thumb {
+  background: #252D38;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #333F4E;
+}
+
+/* Animations */
 @keyframes ping-slow {
   0% { transform: scale(1); opacity: 0.8; }
   50% { transform: scale(1.15); opacity: 0.4; }
   100% { transform: scale(1); opacity: 0.8; }
 }
 
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 .animate-pulse-slow {
   animation: ping-slow 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Reusable Design System Component Utility Classes */
+@layer components {
+  /* Surfaces */
+  .cp-surface-card {
+    background-color: #141A23;
+    border: 1px solid #252D38;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+  }
+
+  .cp-surface-elevated {
+    background-color: #1A222D;
+    border: 1px solid #252D38;
+    border-radius: 1rem;
+    box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.65);
+  }
+
+  .cp-surface-interactive {
+    background-color: #141A23;
+    border: 1px solid #252D38;
+    border-radius: 1rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .cp-surface-interactive:hover {
+    border-color: #333F4E;
+    background-color: #171E28;
+  }
+
+  /* Buttons */
+  .cp-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #080B10;
+    background-color: #20C997;
+    border-radius: 0.75rem;
+    transition: all 0.15s ease-in-out;
+    box-shadow: 0 0 15px -3px rgba(32, 201, 151, 0.3);
+  }
+  .cp-btn-primary:hover {
+    background-color: #1BAF83;
+    box-shadow: 0 0 20px -2px rgba(32, 201, 151, 0.45);
+  }
+  .cp-btn-primary:active {
+    transform: scale(0.98);
+  }
+
+  .cp-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #F8FAFC;
+    background-color: #1A222D;
+    border: 1px solid #252D38;
+    border-radius: 0.75rem;
+    transition: all 0.15s ease-in-out;
+  }
+  .cp-btn-secondary:hover {
+    background-color: #222C3A;
+    border-color: #333F4E;
+    color: #FFFFFF;
+  }
+  .cp-btn-secondary:active {
+    transform: scale(0.98);
+  }
+
+  .cp-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #94A3B8;
+    border-radius: 0.5rem;
+    transition: all 0.15s ease-in-out;
+  }
+  .cp-btn-ghost:hover {
+    background-color: #1A222D;
+    color: #F8FAFC;
+  }
+
+  /* Badges & Status Indicators */
+  .cp-badge-teal {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #20C997;
+    background-color: rgba(32, 201, 151, 0.12);
+    border: 1px solid rgba(32, 201, 151, 0.25);
+    border-radius: 9999px;
+  }
+
+  .cp-badge-success {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #10B981;
+    background-color: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 9999px;
+  }
+
+  .cp-badge-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #F59E0B;
+    background-color: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 9999px;
+  }
+
+  .cp-badge-urgent {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #EF4444;
+    background-color: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 9999px;
+  }
+
+  .cp-badge-neutral {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #94A3B8;
+    background-color: #1A222D;
+    border: 1px solid #252D38;
+    border-radius: 0.5rem;
+  }
+
+  /* Inputs & Search */
+  .cp-input {
+    width: 100%;
+    background-color: #10151C;
+    border: 1px solid #252D38;
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.75rem;
+    color: #F8FAFC;
+    transition: all 0.15s ease-in-out;
+  }
+  .cp-input::placeholder {
+    color: #64748B;
+  }
+  .cp-input:focus {
+    outline: none;
+    border-color: #20C997;
+    box-shadow: 0 0 0 2px rgba(32, 201, 151, 0.2);
+  }
+
+  /* Numerical Vital Metric Display */
+  .cp-stat-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+  }
 }

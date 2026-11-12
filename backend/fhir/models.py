@@ -10,8 +10,11 @@ from datetime import datetime, timezone
 # Standard LOINC Codes for Mandatory Vital Signs
 LOINC_HEART_RATE = "8867-4"
 LOINC_SPO2 = "2708-6"
+LOINC_SPO2_ALT = "59408-5"
 LOINC_RESPIRATORY_RATE = "9279-1"
 LOINC_BODY_TEMPERATURE = "8310-5"
+LOINC_BP_SYSTOLIC = "8480-6"
+LOINC_BP_DIASTOLIC = "8462-4"
 
 LOINC_DEFINITIONS = {
     LOINC_HEART_RATE: {
@@ -24,6 +27,14 @@ LOINC_DEFINITIONS = {
     },
     LOINC_SPO2: {
         "code": LOINC_SPO2,
+        "display": "Oxygen saturation in Arterial blood by Pulse oximetry",
+        "system": "http://loinc.org",
+        "unit": "%",
+        "unit_code": "%",
+        "unit_system": "http://unitsofmeasure.org"
+    },
+    LOINC_SPO2_ALT: {
+        "code": LOINC_SPO2_ALT,
         "display": "Oxygen saturation in Arterial blood by Pulse oximetry",
         "system": "http://loinc.org",
         "unit": "%",
@@ -44,6 +55,22 @@ LOINC_DEFINITIONS = {
         "system": "http://loinc.org",
         "unit": "Cel",
         "unit_code": "Cel",
+        "unit_system": "http://unitsofmeasure.org"
+    },
+    LOINC_BP_SYSTOLIC: {
+        "code": LOINC_BP_SYSTOLIC,
+        "display": "Systolic blood pressure",
+        "system": "http://loinc.org",
+        "unit": "mmHg",
+        "unit_code": "mm[Hg]",
+        "unit_system": "http://unitsofmeasure.org"
+    },
+    LOINC_BP_DIASTOLIC: {
+        "code": LOINC_BP_DIASTOLIC,
+        "display": "Diastolic blood pressure",
+        "system": "http://loinc.org",
+        "unit": "mmHg",
+        "unit_code": "mm[Hg]",
         "unit_system": "http://unitsofmeasure.org"
     }
 }

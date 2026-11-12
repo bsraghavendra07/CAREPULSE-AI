@@ -163,6 +163,7 @@ def calculate_news2(
         recommended_action = "Routine home monitoring; continue scheduled vital sign tracking"
 
     return {
+        "score": total_score,
         "total_score": total_score,
         "tier": tier,
         "clinical_risk": clinical_risk,
