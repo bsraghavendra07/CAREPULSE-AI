@@ -3,7 +3,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useWebSocket } from './hooks/useWebSocket';
 import { usePatients } from './hooks/usePatients';
 import { PatientProfile } from './types/patient';
+import { TelemetryTick } from './types/telemetry';
 import { setSimulationSpeed } from './lib/api';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginPage } from './pages/LoginPage';
 
 import { AppLayout } from './components/layout/AppLayout';
 import { DashboardPage } from './pages/DashboardPage';
@@ -12,6 +15,145 @@ import { VitalsMonitorPage } from './pages/VitalsMonitorPage';
 import { FhirPage } from './pages/FhirPage';
 import { PerformanceReportPage } from './pages/PerformanceReportPage';
 import { DeteriorationTestsPage } from './pages/DeteriorationTestsPage';
+import { Activity } from 'lucide-react';
+
+interface AuthenticatedRoutesProps {
+  patientList: PatientProfile[];
+  latestTicks: Record<string, TelemetryTick>;
+  telemetryHistory: Record<string, TelemetryTick[]>;
+  connected: boolean;
+  speedFactor: number;
+  handleSpeedChange: (factor: number) => Promise<void>;
+  selectedPatientModal: PatientProfile | null;
+  setSelectedPatientModal: (p: PatientProfile | null) => void;
+}
+
+function AuthenticatedRoutes({
+  patientList,
+  latestTicks,
+  telemetryHistory,
+  connected,
+  speedFactor,
+  handleSpeedChange,
+  selectedPatientModal,
+  setSelectedPatientModal,
+}: AuthenticatedRoutesProps) {
+  const { user, staff, loading } = useAuth();
+
+  // Loading Session State
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#080D16] text-white">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/20 border border-emerald-500/30">
+            <Activity className="h-6 w-6 text-emerald-400 animate-pulse" />
+          </div>
+          <div className="text-xs font-semibold text-slate-300 tracking-wide">
+            Authenticating CAREPULSE Session...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Unauthenticated -> Show Dedicated Healthcare Login Homepage
+  if (!user && !staff) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
+  // Authenticated -> Full Clinical Dashboard & Navigation Routes
+  return (
+    <Routes>
+      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route
+        element={
+          <AppLayout
+            patients={patientList}
+            latestTicks={latestTicks}
+            telemetryHistory={telemetryHistory}
+            connected={connected}
+            speedFactor={speedFactor}
+            onSpeedChange={handleSpeedChange}
+            selectedPatientModal={selectedPatientModal}
+            onClosePatientModal={() => setSelectedPatientModal(null)}
+          />
+        }
+      >
+        {/* 1. DASHBOARD */}
+        <Route
+          path="/"
+          element={
+            <DashboardPage
+              patients={patientList}
+              latestTicks={latestTicks}
+              onSelectPatient={(p) => setSelectedPatientModal(p)}
+            />
+          }
+        />
+
+        {/* 2. PATIENTS */}
+        <Route
+          path="/patients"
+          element={
+            <PatientsPage
+              patients={patientList}
+              latestTicks={latestTicks}
+              onSelectPatient={(p) => setSelectedPatientModal(p)}
+            />
+          }
+        />
+
+        {/* 3. VITALS MONITOR */}
+        <Route
+          path="/vitals"
+          element={
+            <VitalsMonitorPage
+              patients={patientList}
+              latestTicks={latestTicks}
+              telemetryHistory={telemetryHistory}
+              connected={connected}
+              onSelectPatient={(p) => setSelectedPatientModal(p)}
+            />
+          }
+        />
+
+        {/* 4. FHIR R4 / HAPI */}
+        <Route
+          path="/fhir"
+          element={<FhirPage patients={patientList} />}
+        />
+
+        {/* 5. PERFORMANCE REPORT */}
+        <Route
+          path="/report"
+          element={<PerformanceReportPage />}
+        />
+
+        {/* 6. DETERIORATION TESTS */}
+        <Route
+          path="/scenarios"
+          element={
+            <DeteriorationTestsPage
+              patients={patientList}
+              latestTicks={latestTicks}
+              speedFactor={speedFactor}
+              onSpeedChange={handleSpeedChange}
+              onSelectPatient={(p) => setSelectedPatientModal(p)}
+            />
+          }
+        />
+
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
+  );
+}
 
 export function App() {
   const { connected, latestTicks, telemetryHistory } = useWebSocket();
@@ -83,90 +225,20 @@ export function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route
-          element={
-            <AppLayout
-              patients={patientList}
-              latestTicks={latestTicks}
-              telemetryHistory={telemetryHistory}
-              connected={connected}
-              speedFactor={speedFactor}
-              onSpeedChange={handleSpeedChange}
-              selectedPatientModal={selectedPatientModal}
-              onClosePatientModal={() => setSelectedPatientModal(null)}
-            />
-          }
-        >
-          {/* 1. DASHBOARD */}
-          <Route
-            path="/"
-            element={
-              <DashboardPage
-                patients={patientList}
-                latestTicks={latestTicks}
-                onSelectPatient={(p) => setSelectedPatientModal(p)}
-              />
-            }
-          />
-
-          {/* 2. PATIENTS */}
-          <Route
-            path="/patients"
-            element={
-              <PatientsPage
-                patients={patientList}
-                latestTicks={latestTicks}
-                onSelectPatient={(p) => setSelectedPatientModal(p)}
-              />
-            }
-          />
-
-          {/* 3. VITALS MONITOR */}
-          <Route
-            path="/vitals"
-            element={
-              <VitalsMonitorPage
-                patients={patientList}
-                latestTicks={latestTicks}
-                telemetryHistory={telemetryHistory}
-                connected={connected}
-                onSelectPatient={(p) => setSelectedPatientModal(p)}
-              />
-            }
-          />
-
-          {/* 4. FHIR R4 / HAPI */}
-          <Route
-            path="/fhir"
-            element={<FhirPage patients={patientList} />}
-          />
-
-          {/* 5. PERFORMANCE REPORT */}
-          <Route
-            path="/report"
-            element={<PerformanceReportPage />}
-          />
-
-          {/* 6. DETERIORATION TESTS */}
-          <Route
-            path="/scenarios"
-            element={
-              <DeteriorationTestsPage
-                patients={patientList}
-                latestTicks={latestTicks}
-                speedFactor={speedFactor}
-                onSpeedChange={handleSpeedChange}
-                onSelectPatient={(p) => setSelectedPatientModal(p)}
-              />
-            }
-          />
-
-          {/* Catch-all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+      <AuthProvider>
+        <AuthenticatedRoutes
+          patientList={patientList}
+          latestTicks={latestTicks}
+          telemetryHistory={telemetryHistory}
+          connected={connected}
+          speedFactor={speedFactor}
+          handleSpeedChange={handleSpeedChange}
+          selectedPatientModal={selectedPatientModal}
+          setSelectedPatientModal={setSelectedPatientModal}
+        />
+      </AuthProvider>
     </BrowserRouter>
   );
 }
+
 export default App;
