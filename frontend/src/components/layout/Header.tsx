@@ -29,14 +29,14 @@ export function Header({ connected, speedFactor = 1 }: HeaderProps) {
         <div>
           <div className="flex items-center space-x-2">
             <h1 className="text-base font-bold tracking-tight text-foreground sm:text-lg">
-              CarePulse AI
+              CAREPULSE 1.0
             </h1>
-            <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-widest text-primary border-primary/30">
-              PS-03
+            <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-widest text-emerald-400 border-emerald-500/30">
+              CLINICAL CDS
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground hidden sm:block">
-            Personalized Post-Discharge Deterioration Monitor
+            Smarter Monitoring. Earlier Awareness. Safer Recovery.
           </p>
         </div>
       </div>

@@ -243,3 +243,4 @@ def recommend_specialty(
         decision_support_only=True,
         is_applicable=False,
     )
+

@@ -12,6 +12,7 @@ import {
   Gauge,
   Search,
   Heart,
+  Activity,
   X,
 } from 'lucide-react';
 import { News2ScorePanel } from '../patient-detail/News2ScorePanel';
@@ -69,17 +70,15 @@ export function AppLayout({
         <div className="space-y-6">
           {/* Brand Logo */}
           <div className="flex items-center space-x-3 px-1">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black border border-slate-700 shadow-inner">
-              <div className="h-4 w-4 rounded-md border-2 border-white flex items-center justify-center">
-                <div className="h-1 w-1 bg-emerald-400 rounded-full" />
-              </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 shadow-inner">
+              <Activity className="h-5 w-5 text-emerald-400 animate-pulse" />
             </div>
             <div>
-              <div className="text-sm font-bold tracking-tight text-white flex items-center space-x-1.5">
-                <span>CarePulse</span>
-                <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">AI</span>
+              <div className="text-base font-extrabold tracking-tight text-white flex items-center space-x-1.5">
+                <span className="bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">CAREPULSE</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold border border-emerald-500/30">1.0</span>
               </div>
-              <div className="text-[10px] text-slate-400">Post-Discharge Monitor</div>
+              <div className="text-[10px] text-emerald-400/80 font-medium tracking-tight">Smarter Monitoring. Earlier Awareness.</div>
             </div>
           </div>
 
@@ -174,12 +173,15 @@ export function AppLayout({
 
         {/* Bottom Profile Bar */}
         <div className="flex items-center space-x-3 border-t border-[#1a1f2c] pt-4 px-1">
-          <div className="h-8 w-8 rounded-full bg-[#0284c7] flex items-center justify-center text-white font-bold text-xs shadow-sm">
+          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
             DR
           </div>
           <div className="leading-tight">
-            <div className="text-xs font-semibold text-slate-100">Dr. Rivera</div>
-            <div className="text-[10px] text-slate-400">Cardiologist · Ward 4B</div>
+            <div className="text-xs font-semibold text-slate-100 flex items-center space-x-1">
+              <span>Dr. Rivera</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            </div>
+            <div className="text-[10px] text-slate-400">Cardiologist · CAREPULSE Auth</div>
           </div>
         </div>
       </aside>
@@ -231,6 +233,18 @@ export function AppLayout({
 
         {/* Dynamic Route Content */}
         <Outlet />
+
+        {/* Global Footer & Branding */}
+        <footer className="pt-6 pb-2 border-t border-[#1a1f2c] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+          <div className="flex items-center space-x-2">
+            <span className="font-bold text-slate-300">CAREPULSE 1.0</span>
+            <span>•</span>
+            <span className="text-slate-400 italic">"Smarter Monitoring. Earlier Awareness. Safer Recovery."</span>
+          </div>
+          <div className="text-[11px] text-slate-500">
+            © 2026 CAREPULSE Health Systems. All rights reserved.
+          </div>
+        </footer>
       </main>
 
       {/* ─────────────────────────────────────────────────────────────
