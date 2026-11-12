@@ -1,7 +1,8 @@
 import { PatientProfile } from '../types/patient';
-import { PerformanceReport } from '../types/telemetry';
+import { PerformanceReport, PerformanceBenchmarkReport, CDSAlert } from '../types/telemetry';
 import { FHIRBundle } from '../types/fhir';
 import { RoutedAlert, AlertStats } from '../types/alert';
+import { SMSAlertRecord, SMSGatewayConfig, SendTestSMSPayload } from '../types/sms';
 
 const API_BASE = '/api';
 
@@ -475,6 +476,84 @@ export async function processBillingInvoice(invoiceId: string, action: string = 
     body: JSON.stringify({ action, notes }),
   });
   if (!res.ok) throw new Error('Failed to process invoice');
+  return res.json();
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// EMERGENCY CELLULAR SMS & BENCHMARK API
+// ─────────────────────────────────────────────────────────────────────
+
+export async function fetchDispatchedSMS(patientId?: string): Promise<SMSAlertRecord[]> {
+  const query = patientId ? `?patient_id=${patientId}` : '';
+  const res = await fetch(`${API_BASE}/sms/alerts${query}`);
+  if (!res.ok) throw new Error(`Failed to fetch SMS records: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchLatestSMS(): Promise<SMSAlertRecord | null> {
+  const res = await fetch(`${API_BASE}/sms/alerts/latest`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function fetchSMSById(smsId: string): Promise<SMSAlertRecord> {
+  const res = await fetch(`${API_BASE}/sms/alerts/${smsId}`);
+  if (!res.ok) throw new Error(`Failed to fetch SMS ${smsId}: ${res.statusText}`);
+  return res.json();
+}
+
+export async function sendTestEmergencySMS(payload: SendTestSMSPayload): Promise<SMSAlertRecord> {
+  const res = await fetch(`${API_BASE}/sms/send-test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to send test emergency SMS: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchSMSConfig(): Promise<SMSGatewayConfig> {
+  const res = await fetch(`${API_BASE}/sms/config`);
+  if (!res.ok) throw new Error(`Failed to fetch SMS config: ${res.statusText}`);
+  return res.json();
+}
+
+export async function simulateCriticalDeterioration(payload: {
+  patient_id: string;
+  condition_type: string;
+  recipient_phone?: string;
+}): Promise<{
+  criticality_analysis: any;
+  dispatched_sms: SMSAlertRecord;
+}> {
+  const res = await fetch(`${API_BASE}/sms/simulate-critical-deterioration`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to simulate critical deterioration: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchBenchmarkReport(): Promise<PerformanceBenchmarkReport> {
+  const res = await fetch(`${API_BASE}/evaluation/benchmark`);
+  if (!res.ok) throw new Error(`Failed to fetch benchmark report: ${res.statusText}`);
+  return res.json();
+}
+
+export async function rerunBenchmark(): Promise<PerformanceBenchmarkReport> {
+  const res = await fetch(`${API_BASE}/evaluation/run-benchmark`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error(`Failed to rerun benchmark: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchCdsAlerts(patientId?: string): Promise<CDSAlert[]> {
+  const url = patientId ? `${API_BASE}/evaluation/cds-alerts?patient_id=${patientId}` : `${API_BASE}/evaluation/cds-alerts`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch CDS alerts: ${res.statusText}`);
   return res.json();
 }
 
