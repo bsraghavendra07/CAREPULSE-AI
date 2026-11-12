@@ -9,6 +9,8 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import {
   getAuth,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
   signOut,
   sendPasswordResetEmail,
   onAuthStateChanged,
@@ -47,6 +49,27 @@ export async function loginWithEmail(email: string, pass: string, rememberMe: bo
   }
   await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
   return signInWithEmailAndPassword(auth, email, pass);
+}
+
+export async function registerWithEmail(
+  email: string,
+  pass: string,
+  displayName: string,
+  rememberMe: boolean = true
+) {
+  if (!isConfiguredFirebaseKey) {
+    return null;
+  }
+  await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+  const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+  if (userCredential.user && displayName) {
+    try {
+      await updateProfile(userCredential.user, { displayName });
+    } catch (e) {
+      console.warn('Failed to set displayName on Firebase user:', e);
+    }
+  }
+  return userCredential;
 }
 
 export async function logoutUser() {

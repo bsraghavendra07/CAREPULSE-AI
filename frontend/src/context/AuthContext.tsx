@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   auth,
   loginWithEmail,
+  registerWithEmail,
   logoutUser,
   requestPasswordReset,
   onAuthStateChanged,
@@ -23,6 +24,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (email: string, pass: string, rememberMe?: boolean) => Promise<void>;
+  register: (email: string, pass: string, fullName: string, department?: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   clearError: () => void;
@@ -186,6 +188,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const register = async (
+    email: string,
+    pass: string,
+    fullName: string,
+    department: string = 'Ward 4B — Post-Discharge Telemetry',
+    rememberMe: boolean = true
+  ) => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      const userCredential = await registerWithEmail(email, pass, fullName, rememberMe);
+      const formattedName = fullName.trim() || `Dr. ${email.split('@')[0]}`;
+      const initials = formattedName
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((s) => s[0].toUpperCase())
+        .join('') || 'DR';
+
+      const staffProfile: StaffProfile = {
+        uid: userCredential?.user?.uid || `staff-${Date.now()}`,
+        email,
+        name: formattedName,
+        role: 'Attending Clinician',
+        department: department || 'Post-Discharge Ward 4B',
+        initials,
+      };
+
+      if (userCredential?.user) {
+        setUser(userCredential.user);
+      }
+      setStaff(staffProfile);
+      if (rememberMe) {
+        localStorage.setItem('carepulse_staff_session', JSON.stringify(staffProfile));
+      }
+    } catch (err: any) {
+      let message = 'Unable to create staff account. Please verify input.';
+      if (err.code === 'auth/email-already-in-use') {
+        message = 'A staff account with this email already exists. Please sign in instead.';
+      } else if (err.code === 'auth/weak-password') {
+        message = 'Password is too weak. Please use at least 6 characters.';
+      } else if (err.code === 'auth/invalid-email') {
+        message = 'Please provide a valid hospital email format.';
+      } else if (err.code === 'auth/network-request-failed') {
+        message = 'Hospital network connection error. Check your connection or VPN.';
+      } else if (err.message) {
+        message = err.message;
+      }
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await logoutUser();
@@ -231,6 +289,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         error,
         login,
+        register,
         logout,
         resetPassword,
         clearError: () => setError(null),

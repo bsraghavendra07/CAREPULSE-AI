@@ -13,15 +13,23 @@ import {
   ArrowLeft,
   Loader2,
   LogIn,
+  UserPlus,
+  UserCheck,
+  Building2,
 } from 'lucide-react';
 
 export function LoginPage() {
-  const { login, resetPassword, loading, error, clearError } = useAuth();
+  const { login, register, resetPassword, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
 
+  // Mode: login vs create account
+  const [isSignUpMode, setIsSignUpMode] = useState(false);
+
   // Form State
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [department, setDepartment] = useState('Cardiology / Ward 4B');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -55,11 +63,25 @@ export function LoginPage() {
       return;
     }
 
-    try {
-      await login(trimmedEmail, password, rememberMe);
-      navigate('/', { replace: true });
-    } catch {
-      // Handled by AuthContext
+    if (isSignUpMode) {
+      const trimmedName = fullName.trim();
+      if (!trimmedName) {
+        setFormValidationMsg('Please enter your full clinician name.');
+        return;
+      }
+      try {
+        await register(trimmedEmail, password, trimmedName, department, rememberMe);
+        navigate('/', { replace: true });
+      } catch {
+        // Error displayed via AuthContext
+      }
+    } else {
+      try {
+        await login(trimmedEmail, password, rememberMe);
+        navigate('/', { replace: true });
+      } catch {
+        // Error displayed via AuthContext
+      }
     }
   };
 
@@ -129,15 +151,53 @@ export function LoginPage() {
           </div>
         </div>
 
-        {/* 2. SIMPLE, CLEAN LOGIN CARD */}
+        {/* 2. SIMPLE, CLEAN LOGIN / REGISTER CARD */}
         <div className="w-full rounded-2xl border border-[#1e293b] bg-[#0f172a]/95 p-6 sm:p-8 shadow-2xl shadow-black/80 backdrop-blur-xl">
           {!isForgotMode ? (
             <div className="space-y-5">
+              {/* Mode Switcher Tabs */}
+              <div className="grid grid-cols-2 p-1 rounded-xl bg-[#080d18] border border-[#1e293b] text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearError();
+                    setFormValidationMsg(null);
+                    setIsSignUpMode(false);
+                  }}
+                  className={`py-2 rounded-lg transition-all ${
+                    !isSignUpMode
+                      ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearError();
+                    setFormValidationMsg(null);
+                    setIsSignUpMode(true);
+                  }}
+                  className={`py-2 rounded-lg transition-all ${
+                    isSignUpMode
+                      ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Create Account
+                </button>
+              </div>
+
               {/* Card Title */}
               <div className="text-center">
-                <h2 className="text-base font-bold text-white">Hospital Staff Login</h2>
+                <h2 className="text-base font-bold text-white">
+                  {isSignUpMode ? 'Register Hospital Staff Account' : 'Hospital Staff Login'}
+                </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Sign in to access your monitoring dashboard
+                  {isSignUpMode
+                    ? 'Create your clinician account to access the real-time monitoring dashboard'
+                    : 'Sign in with your authorized hospital credentials'}
                 </p>
               </div>
 
@@ -149,8 +209,34 @@ export function LoginPage() {
                 </div>
               )}
 
-              {/* Login Form */}
+              {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4 text-left">
+                {/* Full Clinician Name (Only on Sign Up) */}
+                {isSignUpMode && (
+                  <div className="space-y-1.5 animate-in fade-in">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Clinician Full Name & Title
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <UserCheck className="h-4 w-4" />
+                      </div>
+                      <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => {
+                          setFullName(e.target.value);
+                          if (formValidationMsg) setFormValidationMsg(null);
+                        }}
+                        placeholder="e.g. Dr. Prateek Chikkoppa"
+                        required={isSignUpMode}
+                        autoComplete="name"
+                        className="w-full rounded-xl border border-[#26334d] bg-[#090e17] pl-10 pr-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Hospital Email */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-slate-300">
@@ -167,7 +253,7 @@ export function LoginPage() {
                         setEmail(e.target.value);
                         if (formValidationMsg) setFormValidationMsg(null);
                       }}
-                      placeholder="Enter your hospital email"
+                      placeholder="e.g. dr.prateek@carepulse.org"
                       required
                       autoComplete="email"
                       className="w-full rounded-xl border border-[#26334d] bg-[#090e17] pl-10 pr-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
@@ -177,8 +263,9 @@ export function LoginPage() {
 
                 {/* Password */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-300">
-                    Password
+                  <label className="block text-xs font-semibold text-slate-300 flex items-center justify-between">
+                    <span>Password</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Min. 6 characters</span>
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -191,9 +278,9 @@ export function LoginPage() {
                         setPassword(e.target.value);
                         if (formValidationMsg) setFormValidationMsg(null);
                       }}
-                      placeholder="Enter your password"
+                      placeholder={isSignUpMode ? 'Create a secure password' : 'Enter your password'}
                       required
-                      autoComplete="current-password"
+                      autoComplete={isSignUpMode ? 'new-password' : 'current-password'}
                       className="w-full rounded-xl border border-[#26334d] bg-[#090e17] pl-10 pr-10 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
                     />
                     <button
@@ -207,33 +294,60 @@ export function LoginPage() {
                   </div>
                 </div>
 
-                {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <label className="flex items-center space-x-2 cursor-pointer select-none text-slate-400 hover:text-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-[#26334d] bg-[#090e17] text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
-                    />
-                    <span>Remember Me</span>
-                  </label>
+                {/* Medical Department (Only on Sign Up) */}
+                {isSignUpMode && (
+                  <div className="space-y-1.5 animate-in fade-in">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Medical Specialty / Ward
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                      <select
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        className="w-full rounded-xl border border-[#26334d] bg-[#090e17] pl-10 pr-3.5 py-2.5 text-xs text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
+                      >
+                        <option value="Cardiology">Cardiology</option>
+                        <option value="Pulmonology">Pulmonology</option>
+                        <option value="General Medicine / Critical Care">General Medicine / Critical Care</option>
+                        <option value="Surgical Care / Orthopedics">Surgical Care / Orthopedics</option>
+                        <option value="Ward 4B — Post-Discharge Telemetry">Ward 4B — Post-Discharge Telemetry</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearError();
-                      setFormValidationMsg(null);
-                      setResetEmail(email);
-                      setIsForgotMode(true);
-                    }}
-                    className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
+                {/* Remember Me & Forgot Password (Sign In mode) */}
+                {!isSignUpMode && (
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <label className="flex items-center space-x-2 cursor-pointer select-none text-slate-400 hover:text-slate-200">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded border-[#26334d] bg-[#090e17] text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
+                      />
+                      <span>Remember Me</span>
+                    </label>
 
-                {/* Sign In Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearError();
+                        setFormValidationMsg(null);
+                        setResetEmail(email);
+                        setIsForgotMode(true);
+                      }}
+                      className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                )}
+
+                {/* Action Button */}
                 <button
                   type="submit"
                   disabled={loading}
@@ -242,23 +356,34 @@ export function LoginPage() {
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin text-slate-950" />
-                      <span>Signing In...</span>
+                      <span>{isSignUpMode ? 'Registering in Firebase...' : 'Signing In...'}</span>
                     </>
                   ) : (
                     <>
-                      <LogIn className="h-4 w-4" />
-                      <span>Sign In</span>
+                      {isSignUpMode ? <UserPlus className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+                      <span>{isSignUpMode ? 'Create Hospital Account & Sign In' : 'Sign In'}</span>
                     </>
                   )}
                 </button>
               </form>
 
-              {/* Authorized Hospital Staff Only */}
-              <div className="pt-2 text-center border-t border-[#1e293b]">
-                <div className="inline-flex items-center space-x-1.5 text-xs text-slate-400">
+              {/* Bottom Switcher */}
+              <div className="pt-3 text-center border-t border-[#1e293b] flex items-center justify-between text-xs">
+                <div className="inline-flex items-center space-x-1.5 text-slate-400">
                   <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                  <span>Authorized Hospital Staff Only</span>
+                  <span>Authorized Hospital Staff</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearError();
+                    setFormValidationMsg(null);
+                    setIsSignUpMode(!isSignUpMode);
+                  }}
+                  className="text-emerald-400 hover:text-emerald-300 font-bold transition-colors"
+                >
+                  {isSignUpMode ? 'Already registered? Sign In' : "Don't have an account? Create Account"}
+                </button>
               </div>
             </div>
           ) : (
