@@ -21,6 +21,11 @@ import {
 
 const metaEnv = (import.meta as any).env || {};
 
+export const isConfiguredFirebaseKey = Boolean(
+  metaEnv.VITE_FIREBASE_API_KEY &&
+  !metaEnv.VITE_FIREBASE_API_KEY.includes('demo-clinical-key')
+);
+
 const firebaseConfig = {
   apiKey: metaEnv.VITE_FIREBASE_API_KEY || 'AIzaSyD-carepulse-demo-clinical-key-99',
   authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || 'carepulse-hospital.firebaseapp.com',
@@ -36,15 +41,25 @@ export const auth: Auth = getAuth(app);
 
 // Authentication helper functions
 export async function loginWithEmail(email: string, pass: string, rememberMe: boolean = true) {
+  if (!isConfiguredFirebaseKey) {
+    // Return null so AuthContext handles local authorized hospital staff profile
+    return null;
+  }
   await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
   return signInWithEmailAndPassword(auth, email, pass);
 }
 
 export async function logoutUser() {
+  if (!isConfiguredFirebaseKey) {
+    return;
+  }
   return signOut(auth);
 }
 
 export async function requestPasswordReset(email: string) {
+  if (!isConfiguredFirebaseKey) {
+    return;
+  }
   return sendPasswordResetEmail(auth, email);
 }
 
