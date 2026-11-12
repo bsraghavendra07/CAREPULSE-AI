@@ -76,10 +76,10 @@ export function AppLayout({
             </div>
             <div>
               <div className="text-sm font-bold tracking-tight text-white flex items-center space-x-1.5">
-                <span>MINEARENA</span>
-                <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">1.0</span>
+                <span>CarePulse</span>
+                <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">AI</span>
               </div>
-              <div className="text-[10px] text-slate-400">CardioVascular & Deterioration</div>
+              <div className="text-[10px] text-slate-400">Post-Discharge Monitor</div>
             </div>
           </div>
 

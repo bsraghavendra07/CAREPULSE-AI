@@ -29,7 +29,7 @@ export function Header({ connected, speedFactor = 1 }: HeaderProps) {
         <div>
           <div className="flex items-center space-x-2">
             <h1 className="text-base font-bold tracking-tight text-foreground sm:text-lg">
-              MINEARENA 1.0
+              CarePulse AI
             </h1>
             <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-widest text-primary border-primary/30">
               PS-03

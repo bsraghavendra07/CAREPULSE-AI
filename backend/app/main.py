@@ -127,7 +127,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="MINEARENA 1.0 — Personalized Post-Discharge Deterioration Monitor",
+    title="CarePulse AI — Personalized Post-Discharge Deterioration Monitor",
     description="Real-time multi-patient clinical deterioration monitoring using NEWS2 and individualized anomaly detection.",
     version="1.0.0",
     lifespan=lifespan,
@@ -181,7 +181,7 @@ async def websocket_telemetry_endpoint(websocket: WebSocket) -> None:
 @app.get("/")
 async def root() -> dict[str, str]:
     return {
-        "system": "MINEARENA 1.0 Deterioration Monitor",
+        "system": "CarePulse AI Deterioration Monitor",
         "status": "operational",
         "version": "1.0.0",
     }
