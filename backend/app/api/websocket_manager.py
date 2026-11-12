@@ -15,7 +15,7 @@ from app.core.artifact_detector import ArtifactDetector, SQIResult
 from app.core.news2 import NEWS2Result, calculate_news2
 from app.core.specialty_recommender import recommend_specialty, SuggestedSpecialtyResult
 from app.core.specialist_router import route_clinical_alert, RoutedAlert
-from app.core.sms_dispatcher import dispatch_emergency_sms
+from app.core.sms_dispatcher import dispatch_emergency_sms, analyze_situation_criticality
 from app.core.personalized import PersonalizedEngine, PersonalizedResult
 from app.ml.isolation_forest_model import isolation_forest_service
 from app.fhir.local_store import LocalFHIRStore
@@ -253,13 +253,23 @@ class TelemetryManager:
                     "respiratory_rate": _extract_value(vitals, "respiratory_rate"),
                 })
 
-                # 6.8 Emergency SMS Dispatch (Real-world cellular SMS with full clinical report)
+                # 6.8 Continuous Autonomous Criticality Analysis & Automatic Emergency SMS Dispatch
+                clean_v = {
+                    vk: _extract_value(vitals, vk)
+                    for vk in ("heart_rate", "oxygen_saturation", "respiratory_rate", "systolic_bp", "body_temperature")
+                }
+                criticality_analysis = analyze_situation_criticality(
+                    patient=profile,
+                    vitals=clean_v,
+                    news2_result=news2_result,
+                    sqi_status=sqi_result.status,
+                    sqi_note=sqi_result.note,
+                    ml_anomaly=ml_anomaly.model_dump() if ml_anomaly else None,
+                    decision_specialty=specialty_result.suggested_specialty if specialty_result.is_applicable else None,
+                )
+
                 dispatched_sms = None
-                if routed_alert and getattr(routed_alert, "emergency_flag", False):
-                    clean_v = {
-                        vk: _extract_value(vitals, vk)
-                        for vk in ("heart_rate", "oxygen_saturation", "respiratory_rate", "systolic_bp", "body_temperature")
-                    }
+                if criticality_analysis.is_critical:
                     try:
                         dispatched_sms = await dispatch_emergency_sms(
                             patient=profile,
@@ -267,9 +277,11 @@ class TelemetryManager:
                             vitals=clean_v,
                             news2_result=news2_result,
                             ml_anomaly=ml_anomaly.model_dump() if ml_anomaly else None,
+                            criticality_analysis=criticality_analysis,
+                            auto_dispatched=True,
                         )
                     except Exception as sms_err:
-                        logger.error("Error during emergency SMS dispatch: %s", sms_err)
+                        logger.error("Error during automatic emergency SMS dispatch: %s", sms_err)
 
                 # 7. FHIR Observation (store locally)
                 now_iso = datetime.now(timezone.utc).isoformat()
@@ -301,6 +313,7 @@ class TelemetryManager:
                     "news2": _news2_to_dict(news2_result),
                     "suggested_specialty": specialty_result.model_dump(),
                     "routed_alert": routed_alert.model_dump() if routed_alert else None,
+                    "criticality_analysis": criticality_analysis.model_dump(),
                     "dispatched_sms": dispatched_sms.model_dump() if dispatched_sms else None,
                     "ml_anomaly": ml_anomaly.model_dump(),
                     "personalized": _pers_to_dict(pers_result),
@@ -377,13 +390,22 @@ class TelemetryManager:
             "respiratory_rate": _extract_value(vitals, "respiratory_rate"),
         })
 
-        # Emergency SMS Dispatch
+        # Continuous Autonomous Criticality Analysis & Automatic Emergency SMS Dispatch
+        clean_v = {
+            vk: _extract_value(vitals, vk)
+            for vk in ("heart_rate", "oxygen_saturation", "respiratory_rate", "systolic_bp", "body_temperature")
+        }
+        criticality_analysis = analyze_situation_criticality(
+            patient=profile,
+            vitals=clean_v,
+            news2_result=news2_result,
+            sqi_status="GOOD",
+            sqi_note=None,
+            ml_anomaly=ml_anomaly.model_dump() if ml_anomaly else None,
+        )
+
         dispatched_sms = None
-        if routed_alert and getattr(routed_alert, "emergency_flag", False):
-            clean_v = {
-                vk: _extract_value(vitals, vk)
-                for vk in ("heart_rate", "oxygen_saturation", "respiratory_rate", "systolic_bp", "body_temperature")
-            }
+        if criticality_analysis.is_critical:
             try:
                 dispatched_sms = await dispatch_emergency_sms(
                     patient=profile,
@@ -391,6 +413,8 @@ class TelemetryManager:
                     vitals=clean_v,
                     news2_result=news2_result,
                     ml_anomaly=ml_anomaly.model_dump() if ml_anomaly else None,
+                    criticality_analysis=criticality_analysis,
+                    auto_dispatched=True,
                 )
             except Exception as sms_err:
                 logger.error("Error during FHIR emergency SMS dispatch: %s", sms_err)
@@ -410,6 +434,7 @@ class TelemetryManager:
             },
             "news2": _news2_to_dict(news2_result),
             "routed_alert": routed_alert.model_dump() if routed_alert else None,
+            "criticality_analysis": criticality_analysis.model_dump(),
             "dispatched_sms": dispatched_sms.model_dump() if dispatched_sms else None,
             "ml_anomaly": ml_anomaly.model_dump(),
             "personalized": _pers_to_dict(pers_result),

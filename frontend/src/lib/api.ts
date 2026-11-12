@@ -163,5 +163,22 @@ export async function fetchSMSConfig(): Promise<SMSGatewayConfig> {
   return res.json();
 }
 
+export async function simulateCriticalDeterioration(payload: {
+  patient_id: string;
+  condition_type: string;
+  recipient_phone?: string;
+}): Promise<{
+  criticality_analysis: any;
+  dispatched_sms: SMSAlertRecord;
+}> {
+  const res = await fetch(`${API_BASE}/sms/simulate-critical-deterioration`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to simulate critical deterioration: ${res.statusText}`);
+  return res.json();
+}
+
 
 

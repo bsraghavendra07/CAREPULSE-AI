@@ -43,6 +43,19 @@ class SMSGatewayConfig(BaseModel):
     cooldown_seconds: int = Field(default=30, description="Minimum seconds between SMS dispatches per patient")
 
 
+class CriticalityAnalysis(BaseModel):
+    """Autonomous clinical evaluation of patient deterioration criticality."""
+    is_critical: bool
+    criticality_tier: str = "NOMINAL"  # NOMINAL, WATCH, REVIEW, CRITICAL_EMERGENCY, DEVICE_WARNING
+    triggers: List[str] = Field(default_factory=list)
+    primary_reason: str
+    action_directive: str
+    target_department: str
+    assigned_specialist: str
+    is_artifact_filtered: bool = False
+    explanation: str
+
+
 class FullClinicalReport(BaseModel):
     """Complete multi-parameter clinical snapshot for emergency review."""
     report_id: str
@@ -83,6 +96,8 @@ class SMSAlertRecord(BaseModel):
     message_body: str
     delivery_status: str = "DELIVERED"  # DELIVERED, DISPATCHED, FAILED
     carrier_route: str = "Twilio Healthcare Tier-1 Cellular Gateway"
+    auto_dispatched: bool = True
+    criticality_triggers: List[str] = Field(default_factory=list)
     timestamp: str
     report_url: str
     full_report: FullClinicalReport
@@ -213,18 +228,159 @@ async def send_via_twilio(
         return response.json()
 
 
+def _extract_num(val: Any) -> Optional[float]:
+    if val is None:
+        return None
+    if isinstance(val, dict):
+        val = val.get("value")
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def analyze_situation_criticality(
+    patient: Dict[str, Any],
+    vitals: Dict[str, Any],
+    news2_result: Optional[Any] = None,
+    sqi_status: str = "GOOD",
+    sqi_note: Optional[str] = None,
+    ml_anomaly: Optional[Dict[str, Any]] = None,
+    decision_specialty: Optional[str] = None,
+) -> CriticalityAnalysis:
+    """
+    Continuous Autonomous Clinical Analysis Engine:
+    Inspects physiological telemetry dimensions, RCP NEWS2 scores, extreme single-vital
+    deviations, multi-organ shock index, and ML anomalies to determine if patient situation
+    is critical and requires immediate automatic cellular SMS escalation.
+    """
+    pid = patient.get("id", "P-UNKNOWN")
+    pname = patient.get("name", "Unknown Patient")
+    pcond = patient.get("condition", "Post-Discharge Surveillance")
+    dept = decision_specialty or patient.get("department", "General Medicine / Critical Care")
+    spec_name = patient.get("specialist_name", "Dr. Marcus Vance, MD")
+    scale2 = patient.get("scale2_prescribed", False)
+
+    hr = _extract_num(vitals.get("heart_rate"))
+    spo2 = _extract_num(vitals.get("oxygen_saturation"))
+    rr = _extract_num(vitals.get("respiratory_rate"))
+    sbp = _extract_num(vitals.get("systolic_bp"))
+    temp = _extract_num(vitals.get("body_temperature"))
+
+    # 1. Sensor Artifact Filtering (Strict false alarm prevention guard)
+    is_artifact = (
+        sqi_status == "LOW"
+        or (hr is not None and hr <= 0.0)
+        or (spo2 is not None and spo2 <= 0.0)
+    )
+    if is_artifact:
+        return CriticalityAnalysis(
+            is_critical=False,
+            criticality_tier="DEVICE_WARNING",
+            triggers=["Telemetry signal flagged as motion noise or sensor disconnect"],
+            primary_reason=f"Technical artifact: {sqi_note or 'Probe disconnect / motion noise'}",
+            action_directive="Inspect wearable telemetry sensor and verify electrode skin contact.",
+            target_department="Clinical Engineering",
+            assigned_specialist="Biomedical Engineering Team",
+            is_artifact_filtered=True,
+            explanation="Emergency SMS automatically suppressed: Telemetry artifact detected rather than genuine physiological deterioration.",
+        )
+
+    # 2. Extract NEWS2 indicators
+    news2_score = getattr(news2_result, "total_score", 0)
+    has_red = getattr(news2_result, "has_red_score", False)
+    red_param = getattr(news2_result, "red_score_parameter", None)
+    triage_tier = getattr(news2_result, "triage_tier", "ROUTINE")
+
+    triggers: List[str] = []
+    if news2_score >= 7:
+        triggers.append(f"NEWS2 Critical Escalation Threshold: {news2_score} points (>= 7 RCP emergency limit)")
+    if has_red and red_param:
+        triggers.append(f"NEWS2 Red Score Parameter: {red_param.replace('_', ' ').title()} extreme derangement (score = 3)")
+
+    # 3. Direct Extreme Physiological Derangement Checks
+    if hr is not None:
+        if hr >= 131:
+            triggers.append(f"Severe Tachycardia: {hr:.0f} bpm (Extreme cardiac strain)")
+        elif hr <= 40:
+            triggers.append(f"Severe Bradycardia: {hr:.0f} bpm (Critical hemodynamic collapse risk)")
+
+    if spo2 is not None:
+        target_min = 88.0 if scale2 else 92.0
+        if spo2 < target_min:
+            triggers.append(f"Acute Hypoxemic Event: SpO2 {spo2:.0f}% (Target: {target_min:.0f}%)")
+
+    if rr is not None:
+        if rr >= 25:
+            triggers.append(f"Severe Tachypnea: {rr:.0f} /min (Acute ventilatory exhaustion)")
+        elif rr <= 8:
+            triggers.append(f"Severe Bradypnea: {rr:.0f} /min (Impending respiratory arrest)")
+
+    if sbp is not None and sbp <= 90:
+        triggers.append(f"Hypotensive Shock State: SBP {sbp:.0f} mmHg (Inadequate systemic perfusion)")
+
+    if temp is not None:
+        if temp >= 39.5:
+            triggers.append(f"Hyperpyrexia: {temp:.1f} °C (Severe systemic sepsis / inflammatory crisis)")
+        elif temp <= 35.0:
+            triggers.append(f"Severe Hypothermia: {temp:.1f} °C (Cardiovascular collapse risk)")
+
+    # 4. Multi-system acute shock pattern (Shock Index HR > SBP)
+    if hr is not None and sbp is not None and hr > 115 and sbp < 95:
+        triggers.append(f"Circulatory Shock Index Elevated: HR {hr:.0f} > SBP {sbp:.0f} (Immediate fluid/vasopressor resuscitation indication)")
+
+    # 5. ML Isolation Forest Anomaly
+    ml_score = ml_anomaly.get("anomaly_score", 0.0) if ml_anomaly else 0.0
+    ml_level = ml_anomaly.get("anomaly_level", "NORMAL") if ml_anomaly else "NORMAL"
+    if ml_level == "SEVERE_ANOMALY" or ml_score >= 0.85:
+        triggers.append(f"Multivariate Isolation Forest Anomaly: Score {ml_score:.3f} (Statistically acute multivariate deviation)")
+
+    # 6. Critical Decision Logic
+    is_critical = (
+        news2_score >= 7
+        or has_red
+        or (len(triggers) >= 2 and news2_score >= 5)
+        or any("Severe" in t or "Acute" in t or "Shock" in t for t in triggers)
+    )
+
+    primary_reason = " | ".join(triggers[:2]) if triggers else "Physiological vitals stable within clinical tolerances"
+    directive = (
+        f"CRITICAL ESCALATION: Immediate bedside intervention by {dept} specialist on-call. Stabilize airway, oxygenation, and hemodynamics."
+        if is_critical else
+        "Continue standard continuous post-discharge surveillance."
+    )
+
+    return CriticalityAnalysis(
+        is_critical=is_critical,
+        criticality_tier="CRITICAL_EMERGENCY" if is_critical else triage_tier,
+        triggers=triggers,
+        primary_reason=primary_reason,
+        action_directive=directive,
+        target_department=dept,
+        assigned_specialist=spec_name,
+        is_artifact_filtered=False,
+        explanation=(
+            f"Autonomous clinical analyzer identified acute deterioration: {triggers[0] if triggers else 'Critical score'}."
+            if is_critical else
+            "All vital telemetry within monitored tolerance."
+        ),
+    )
+
+
 async def dispatch_emergency_sms(
     patient: Dict[str, Any],
     alert: Any,
     vitals: Dict[str, Any],
     news2_result: Optional[Any] = None,
     ml_anomaly: Optional[Dict[str, Any]] = None,
+    criticality_analysis: Optional[CriticalityAnalysis] = None,
     force: bool = False,
     override_recipient_phone: Optional[str] = None,
+    auto_dispatched: bool = True,
 ) -> Optional[SMSAlertRecord]:
     """
     Main Emergency SMS Dispatch Workflow:
-    1. Verify alert severity requires emergency dispatch (URGENT / RED SCORE / NEWS2 >= 7).
+    1. Verify alert severity requires emergency dispatch (URGENT / RED SCORE / NEWS2 >= 7 / Criticality Analysis).
     2. Enforce anti-spam cooldown unless forced.
     3. Generate the comprehensive clinical report and cellular message body.
     4. Send via real Twilio API if credentials exist, otherwise simulate tier-1 healthcare carrier gateway.
@@ -250,7 +406,8 @@ async def dispatch_emergency_sms(
     severity = getattr(alert, "severity", "URGENT")
     
     is_urgent = (
-        triage_tier == "URGENT"
+        (criticality_analysis and criticality_analysis.is_critical)
+        or triage_tier == "URGENT"
         or severity == "URGENT"
         or has_red
         or news2_score >= 7
@@ -285,8 +442,15 @@ async def dispatch_emergency_sms(
         if not k.startswith("_")
     }
 
-    trigger_reason = getattr(alert, "alert_reason", "Critical physiological vital-sign deviation detected")
-    clinical_action = getattr(alert, "clinical_action", "Immediate bedside emergency evaluation and vital stabilization")
+    trigger_reason = (
+        (criticality_analysis.primary_reason if criticality_analysis else None)
+        or getattr(alert, "alert_reason", "Critical physiological vital-sign deviation detected")
+    )
+    clinical_action = (
+        (criticality_analysis.action_directive if criticality_analysis else None)
+        or getattr(alert, "clinical_action", "Immediate bedside emergency evaluation and vital stabilization")
+    )
+    triggers_list = criticality_analysis.triggers if criticality_analysis else []
     
     alert_id = getattr(alert, "id", f"alert-{pid}-{int(datetime.now().timestamp())}")
     report_url = f"{DEFAULT_REPORT_BASE_URL}?patient_id={pid}&alert_id={alert_id}"
@@ -372,6 +536,8 @@ async def dispatch_emergency_sms(
         message_body=sms_body,
         delivery_status=delivery_status,
         carrier_route=carrier,
+        auto_dispatched=auto_dispatched,
+        criticality_triggers=triggers_list,
         timestamp=now_iso,
         report_url=report_url,
         full_report=full_report,

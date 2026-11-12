@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { PatientProfile } from '../../types/patient';
 import { TelemetryTick } from '../../types/telemetry';
@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   BellRing,
   Smartphone,
+  Radio,
 } from 'lucide-react';
 import { News2ScorePanel } from '../patient-detail/News2ScorePanel';
 import { PersonalizedPanel } from '../patient-detail/PersonalizedPanel';
@@ -52,6 +53,18 @@ export function AppLayout({
   const { staff, logout } = useAuth();
   const [resetToast, setResetToast] = useState<string | null>(null);
   const [showSmsModal, setShowSmsModal] = useState<boolean>(false);
+  const [latestAutoSms, setLatestAutoSms] = useState<any | null>(null);
+  const seenSmsIdsRef = useRef<Set<string>>(new Set());
+
+  // Watch continuous telemetry stream for automatically analyzed critical situations
+  useEffect(() => {
+    Object.values(latestTicks).forEach((tick) => {
+      if (tick.dispatched_sms && !seenSmsIdsRef.current.has(tick.dispatched_sms.id)) {
+        seenSmsIdsRef.current.add(tick.dispatched_sms.id);
+        setLatestAutoSms(tick.dispatched_sms);
+      }
+    });
+  }, [latestTicks]);
 
   const handleClearScenario = async (pid: string) => {
     try {
@@ -279,6 +292,48 @@ export function AppLayout({
             </div>
           </div>
         </header>
+
+        {/* Autonomous Critical Emergency SMS Toast */}
+        {latestAutoSms && (
+          <div className="p-4 bg-gradient-to-r from-rose-950/70 via-red-950/60 to-[#120709] border-2 border-rose-500/70 rounded-2xl text-rose-200 text-xs shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 animate-in slide-in-from-top-2">
+            <div className="flex items-start md:items-center space-x-3">
+              <div className="h-9 w-9 shrink-0 rounded-xl bg-rose-500/20 border border-rose-500/50 text-rose-400 flex items-center justify-center">
+                <Radio className="h-5 w-5 animate-pulse text-rose-400" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center space-x-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white">
+                    🚨 CRITICAL SITUATION DETECTED — EMERGENCY SMS AUTO-DISPATCHED
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {new Date(latestAutoSms.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+                <div className="text-xs text-rose-100 font-medium">
+                  Patient <strong className="text-white underline">{latestAutoSms.patient_name}</strong> entered critical threshold: {latestAutoSms.full_report?.trigger_reason || latestAutoSms.message_body?.split('\n')[5] || 'Acute clinical deterioration'}.
+                  Routed to <strong className="text-white">{latestAutoSms.recipient_name}</strong> ({latestAutoSms.full_report?.specialist_department || 'Specialist Queue'}).
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
+              <button
+                onClick={() => setShowSmsModal(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg transition-all flex items-center space-x-1.5"
+              >
+                <Smartphone className="h-3.5 w-3.5" />
+                <span>Inspect Dispatched SMS</span>
+              </button>
+              <button
+                onClick={() => setLatestAutoSms(null)}
+                className="p-1 rounded-lg hover:bg-rose-900/40 text-slate-400 hover:text-white"
+                title="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Global Reset Toast */}
         {resetToast && (

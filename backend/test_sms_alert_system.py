@@ -12,10 +12,12 @@ import asyncio
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.core.sms_dispatcher import (
-    SMSAlertRecord,
+    CriticalityAnalysis,
     FullClinicalReport,
-    format_emergency_sms_text,
+    SMSAlertRecord,
+    analyze_situation_criticality,
     dispatch_emergency_sms,
+    format_emergency_sms_text,
     sms_store,
 )
 
@@ -103,6 +105,48 @@ async def test_emergency_dispatch_and_cooldown():
     assert record3.id != record1.id
 
 
+def test_automatic_criticality_analysis():
+    """Verify autonomous clinical criticality analyzer correctly flags critical deterioration."""
+    patient = {
+        "id": "P-001",
+        "name": "Robert Thompson",
+        "gender": "male",
+        "condition": "Post-Myocardial Infarction",
+        "department": "Cardiology",
+        "specialist_name": "Dr. Robert Rivera, MD",
+    }
+
+    # Case 1: Normal baseline vitals -> NOT critical
+    normal_vitals = {"heart_rate": 74, "oxygen_saturation": 98, "respiratory_rate": 16, "systolic_bp": 122, "body_temperature": 36.8}
+    class MockNEWS2Normal:
+        total_score = 0
+        has_red_score = False
+        triage_tier = "ROUTINE"
+    res_normal = analyze_situation_criticality(patient, normal_vitals, MockNEWS2Normal())
+    assert not res_normal.is_critical
+    assert res_normal.criticality_tier == "ROUTINE"
+
+    # Case 2: Acute cardiac deterioration (severe tachycardia + hypotension) -> CRITICAL
+    crit_vitals = {"heart_rate": 160, "oxygen_saturation": 85, "respiratory_rate": 28, "systolic_bp": 85, "body_temperature": 37.2}
+    class MockNEWS2Crit:
+        total_score = 11
+        has_red_score = True
+        red_score_parameter = "heart_rate"
+        triage_tier = "URGENT"
+    res_crit = analyze_situation_criticality(patient, crit_vitals, MockNEWS2Crit())
+    assert res_crit.is_critical
+    assert res_crit.criticality_tier == "CRITICAL_EMERGENCY"
+    assert len(res_crit.triggers) >= 2
+    assert any("Severe Tachycardia" in t for t in res_crit.triggers)
+
+    # Case 3: Sensor artifact (probe disconnect/low SQI) -> Filtered out, NOT critical
+    artifact_vitals = {"heart_rate": 0, "oxygen_saturation": 0, "respiratory_rate": 0}
+    res_artifact = analyze_situation_criticality(patient, artifact_vitals, MockNEWS2Crit(), sqi_status="LOW", sqi_note="Lead disconnect")
+    assert not res_artifact.is_critical
+    assert res_artifact.is_artifact_filtered
+    assert "suppressed" in res_artifact.explanation.lower()
+
+
 async def test_sms_api_endpoints():
     """Verify FastAPI routes for SMS alert history, latest, and test trigger."""
     transport = ASGITransport(app=app)
@@ -146,11 +190,25 @@ async def test_sms_api_endpoints():
         cfg = cfg_resp.json()
         assert "cooldown_seconds" in cfg
 
+        # 6. Test automatic critical deterioration simulation
+        sim_resp = await client.post("/api/sms/simulate-critical-deterioration", json={
+            "patient_id": "P-001",
+            "condition_type": "cardiac_crisis",
+            "recipient_phone": "+1 (555) 777-8888",
+        })
+        assert sim_resp.status_code == 200
+        sim_data = sim_resp.json()
+        assert sim_data["criticality_analysis"]["is_critical"] is True
+        assert sim_data["dispatched_sms"]["auto_dispatched"] is True
+        assert "heart" in sim_data["dispatched_sms"]["message_body"].lower() or "cardiology" in sim_data["dispatched_sms"]["message_body"].lower()
+
 
 if __name__ == "__main__":
     print("Running SMS alert tests...")
     test_emergency_sms_format()
     print("✓ test_emergency_sms_format passed")
+    test_automatic_criticality_analysis()
+    print("✓ test_automatic_criticality_analysis passed")
     asyncio.run(test_emergency_dispatch_and_cooldown())
     print("✓ test_emergency_dispatch_and_cooldown passed")
     asyncio.run(test_sms_api_endpoints())

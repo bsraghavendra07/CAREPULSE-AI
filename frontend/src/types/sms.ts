@@ -1,3 +1,15 @@
+export interface CriticalityAnalysis {
+  is_critical: boolean;
+  criticality_tier: string;
+  triggers: string[];
+  primary_reason: string;
+  action_directive: string;
+  target_department: string;
+  assigned_specialist: string;
+  is_artifact_filtered: boolean;
+  explanation: string;
+}
+
 export interface FullClinicalReport {
   report_id: string;
   generated_at: string;
@@ -36,6 +48,8 @@ export interface SMSAlertRecord {
   message_body: string;
   delivery_status: string;
   carrier_route: string;
+  auto_dispatched?: boolean;
+  criticality_triggers?: string[];
   timestamp: string;
   report_url: string;
   full_report: FullClinicalReport;

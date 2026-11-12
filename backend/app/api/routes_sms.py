@@ -14,8 +14,10 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.core.sms_dispatcher import (
+    CriticalityAnalysis,
     SMSAlertRecord,
     SMSGatewayConfig,
+    analyze_situation_criticality,
     dispatch_emergency_sms,
     sms_store,
 )
@@ -143,6 +145,133 @@ async def send_test_emergency_sms(req: SendTestSMSRequest) -> SMSAlertRecord:
         )
 
     return record
+
+
+class SimulateCriticalRequest(BaseModel):
+    patient_id: str = Field(default="P-001", description="Target patient ID")
+    condition_type: str = Field(
+        default="cardiac_crisis",
+        description="Crisis type: cardiac_crisis | septic_shock | respiratory_arrest",
+    )
+    recipient_phone: Optional[str] = Field(default=None, description="Optional custom recipient phone")
+
+
+class CriticalSimulationResponse(BaseModel):
+    criticality_analysis: CriticalityAnalysis
+    dispatched_sms: SMSAlertRecord
+
+
+@router.post("/simulate-critical-deterioration", response_model=CriticalSimulationResponse)
+async def simulate_critical_deterioration(req: SimulateCriticalRequest) -> CriticalSimulationResponse:
+    """
+    Test autonomous clinical deterioration analyzer:
+    1. Injects acute multi-system vitals.
+    2. Runs continuous autonomous criticality analysis.
+    3. Confirms situation is CRITICAL.
+    4. Automatically dispatches cellular emergency SMS to assigned specialist.
+    """
+    patient = _patients.get(req.patient_id)
+    if not patient:
+        patient = {
+            "id": req.patient_id,
+            "name": "Robert Thompson",
+            "gender": "male",
+            "birthDate": "1958-03-15",
+            "condition": "Post-Myocardial Infarction / Acute Heart Failure",
+            "specialist_name": "Dr. Robert Rivera, MD",
+            "department": "Cardiology",
+        }
+
+    # Prescribed vital patterns for critical scenarios
+    if req.condition_type == "septic_shock":
+        acute_vitals = {
+            "heart_rate": 136,
+            "oxygen_saturation": 88,
+            "respiratory_rate": 29,
+            "systolic_bp": 82,
+            "body_temperature": 39.8,
+        }
+        news2_score = 11
+        red_param = "systolic_bp"
+        reason = "Septic Shock: Severe Hypotension (82 mmHg) & Hyperpyrexia (39.8°C)"
+    elif req.condition_type == "respiratory_arrest":
+        acute_vitals = {
+            "heart_rate": 118,
+            "oxygen_saturation": 79,
+            "respiratory_rate": 34,
+            "systolic_bp": 105,
+            "body_temperature": 37.4,
+        }
+        news2_score = 10
+        red_param = "oxygen_saturation"
+        reason = "Acute Hypoxemic Respiratory Failure (SpO2 79% on Room Air)"
+    else:  # cardiac_crisis
+        acute_vitals = {
+            "heart_rate": 165,
+            "oxygen_saturation": 86,
+            "respiratory_rate": 28,
+            "systolic_bp": 88,
+            "body_temperature": 37.1,
+        }
+        news2_score = 12
+        red_param = "heart_rate"
+        reason = "Acute Hemodynamic Crisis: Malignant Tachyarrhythmia & Hypotension"
+
+    class MockNEWS2:
+        total_score = news2_score
+        has_red_score = True
+        red_score_parameter = red_param
+        triage_tier = "URGENT"
+
+    # Step 1: Run autonomous clinical criticality analysis
+    analysis = analyze_situation_criticality(
+        patient=patient,
+        vitals=acute_vitals,
+        news2_result=MockNEWS2(),
+        sqi_status="GOOD",
+        ml_anomaly={"anomaly_score": 0.992, "anomaly_level": "SEVERE_ANOMALY"},
+        decision_specialty=patient.get("department"),
+    )
+
+    if not analysis.is_critical:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vitals did not trigger critical deterioration threshold.",
+        )
+
+    class MockAlert:
+        id = f"auto-crit-{req.patient_id}-{int(datetime.now().timestamp())}"
+        severity = "URGENT"
+        alert_reason = reason
+        clinical_action = analysis.action_directive
+        specialist_name = patient.get("specialist_name", "Dr. Robert Rivera, MD")
+        specialist_title = patient.get("specialist_title", "Senior Specialist")
+        department = patient.get("department", "Cardiology")
+        emergency_flag = True
+
+    # Step 2: Automatically dispatch emergency SMS
+    record = await dispatch_emergency_sms(
+        patient=patient,
+        alert=MockAlert(),
+        vitals=acute_vitals,
+        news2_result=MockNEWS2(),
+        ml_anomaly={"anomaly_score": 0.992, "anomaly_level": "SEVERE_ANOMALY"},
+        criticality_analysis=analysis,
+        force=True,
+        override_recipient_phone=req.recipient_phone,
+        auto_dispatched=True,
+    )
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to auto-dispatch emergency SMS for critical situation.",
+        )
+
+    return CriticalSimulationResponse(
+        criticality_analysis=analysis,
+        dispatched_sms=record,
+    )
 
 
 @router.get("/config", response_model=SMSGatewayConfig)

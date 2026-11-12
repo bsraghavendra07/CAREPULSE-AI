@@ -86,6 +86,8 @@ export interface TelemetryTick {
   personalized: PersonalizedInsight;
   suggested_specialty?: SuggestedSpecialty;
   routed_alert?: any;
+  criticality_analysis?: any;
+  dispatched_sms?: any;
   ml_anomaly?: MLAnomalyPrediction;
   fhir_observation_id: string;
 }

@@ -14,6 +14,8 @@ import {
   Activity,
   AlertTriangle,
   Radio,
+  Zap,
+  Cpu,
 } from 'lucide-react';
 import { SMSAlertRecord, SMSGatewayConfig } from '../../types/sms';
 import { PatientProfile } from '../../types/patient';
@@ -21,6 +23,7 @@ import {
   fetchDispatchedSMS,
   sendTestEmergencySMS,
   fetchSMSConfig,
+  simulateCriticalDeterioration,
 } from '../../lib/api';
 
 interface EmergencySMSModalProps {
@@ -48,6 +51,34 @@ export function EmergencySMSModal({
   const [testPatientId, setTestPatientId] = useState<string>(initialPatientId || patients[0]?.id || 'P-001');
   const [recipientPhone, setRecipientPhone] = useState<string>('+1 (555) 911-0000');
   const [customNote, setCustomNote] = useState<string>('Simulated critical clinical deterioration: Acute hypoxemic respiratory event');
+  const [simCrisisType, setSimCrisisType] = useState<string>('cardiac_crisis');
+  const [analyzingSim, setAnalyzingSim] = useState<boolean>(false);
+
+  const handleSimulateCritical = async () => {
+    setAnalyzingSim(true);
+    setFeedback(null);
+    try {
+      const res = await simulateCriticalDeterioration({
+        patient_id: testPatientId,
+        condition_type: simCrisisType,
+        recipient_phone: recipientPhone,
+      });
+      setFeedback({
+        type: 'success',
+        message: `🚨 Critical situation autonomously analyzed! ${res.criticality_analysis.primary_reason} -> Emergency SMS automatically dispatched to ${res.dispatched_sms.recipient_name}!`,
+      });
+      setSmsList((prev) => [res.dispatched_sms, ...prev]);
+      setSelectedSMS(res.dispatched_sms);
+      setActiveTab('history');
+    } catch (err: any) {
+      setFeedback({
+        type: 'error',
+        message: `Simulation failed: ${err.message}`,
+      });
+    } finally {
+      setAnalyzingSim(false);
+    }
+  };
 
   const loadSMSHistory = async () => {
     setLoading(true);
@@ -123,9 +154,13 @@ export function EmergencySMSModal({
                   <Radio className="h-3 w-3 animate-pulse" />
                   <span>TIER-1 HEALTHCARE CARRIER</span>
                 </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center space-x-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Autonomous Criticality Analyzer: ACTIVE</span>
+                </span>
               </div>
               <p className="text-xs text-slate-400">
-                Automated cellular alerts with embedded clinical report snapshots dispatched to on-call specialists
+                Continuous autonomous physiological analysis — automatically dispatches cellular SMS alerts when critical deterioration is detected
               </p>
             </div>
           </div>
@@ -231,9 +266,17 @@ export function EmergencySMSModal({
                             <span className="font-bold text-white">{sms.patient_name}</span>
                             <span className="text-[10px] font-mono text-slate-400">#{sms.patient_id}</span>
                           </div>
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            {sms.delivery_status}
-                          </span>
+                          <div className="flex items-center space-x-1.5">
+                            {sms.auto_dispatched && (
+                              <span className="px-1.5 py-0.2 rounded text-[8px] font-extrabold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center space-x-0.5">
+                                <Zap className="h-2.5 w-2.5 text-cyan-400" />
+                                <span>AUTO</span>
+                              </span>
+                            )}
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              {sms.delivery_status}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="text-[11px] text-slate-300 truncate">
@@ -399,7 +442,74 @@ export function EmergencySMSModal({
             </div>
           ) : (
             /* Tab: Send Test Emergency SMS */
-            <form onSubmit={handleSendTest} className="max-w-2xl mx-auto space-y-5 py-4">
+            <div className="max-w-2xl mx-auto space-y-6 py-2">
+              {/* Feature: Autonomous Critical Situation Detection Simulator */}
+              <div className="rounded-2xl border-2 border-emerald-500/40 bg-[#0d161d] p-4 text-xs space-y-3 shadow-lg">
+                <div className="flex items-center justify-between border-b border-[#1b2b2b] pb-2">
+                  <div className="flex items-center space-x-2.5 font-bold text-white">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      <Cpu className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span>Autonomous Critical Situation Analyzer</span>
+                        <span className="px-2 py-0.2 rounded-full text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                          CONTINUOUS SURVEILLANCE
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-normal">
+                        Simulate an acute physiological crisis to verify that the system autonomously analyzes criticality and dispatches the SMS automatically without manual intervention.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {[
+                    { id: 'cardiac_crisis', label: 'Cardiac Crisis', desc: 'HR 165 bpm, BP 88/50 mmHg', dept: 'Cardiology' },
+                    { id: 'septic_shock', label: 'Septic Shock', desc: 'BP 82 mmHg, Temp 39.8°C, RR 29', dept: 'Critical Care' },
+                    { id: 'respiratory_arrest', label: 'Respiratory Failure', desc: 'SpO2 79%, RR 34 /min', dept: 'Pulmonology' },
+                  ].map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => setSimCrisisType(c.id)}
+                      className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
+                        simCrisisType === c.id
+                          ? 'border-emerald-500 bg-emerald-950/30 ring-1 ring-emerald-500/40'
+                          : 'border-[#1b2333] bg-[#111722] hover:border-[#28364f]'
+                      }`}
+                    >
+                      <div className="font-bold text-white flex items-center justify-between">
+                        <span>{c.label}</span>
+                        <span className="text-[9px] text-emerald-400 font-mono">{c.dept}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-1">{c.desc}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={analyzingSim}
+                  onClick={handleSimulateCritical}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-extrabold text-xs flex items-center justify-center space-x-2 shadow-lg disabled:opacity-50 transition-all"
+                >
+                  {analyzingSim ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin text-black" />
+                      <span>Analyzing Situation & Auto-Dispatching Emergency SMS...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 text-black fill-current" />
+                      <span>Analyze Crisis & Trigger Automatic SMS Dispatch</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Manual Test Dispatch Form */}
+              <form onSubmit={handleSendTest} className="space-y-4 pt-2 border-t border-[#1b2230]">
               <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-300 space-y-1.5">
                 <div className="flex items-center space-x-2 font-bold text-rose-200">
                   <Flame className="h-4 w-4 text-rose-400" />
@@ -494,7 +604,8 @@ export function EmergencySMSModal({
                 </button>
               </div>
             </form>
-          )}
+          </div>
+        )}
         </div>
       </div>
     </div>
