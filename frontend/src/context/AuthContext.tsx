@@ -123,44 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
 
     try {
-      let userCredential;
-      try {
-        // 1. Attempt Firebase Authentication Sign In
-        userCredential = await loginWithEmail(email, pass, rememberMe);
-      } catch (fbLoginErr: any) {
-        console.warn('Firebase login attempt code:', fbLoginErr?.code);
-        // If user does not exist in Firebase yet, auto-provision and save to Firebase Authentication
-        // so it appears immediately in Firebase Console -> Authentication -> Users
-        if (
-          fbLoginErr?.code === 'auth/user-not-found' ||
-          fbLoginErr?.code === 'auth/invalid-credential'
-        ) {
-          try {
-            const rawName = email.split('@')[0].replace(/[._-]/g, ' ');
-            const formattedName = rawName.toLowerCase().startsWith('dr')
-              ? rawName
-              : `Dr. ${rawName.charAt(0).toUpperCase() + rawName.slice(1)}`;
-            let detectedRole = 'DOCTOR';
-            if (email.toLowerCase().includes('admin')) detectedRole = 'HOSPITAL_ADMIN';
-            else if (email.toLowerCase().includes('nurse')) detectedRole = 'NURSE';
-
-            userCredential = await registerWithEmail(email, pass, formattedName, {
-              role: detectedRole,
-              hospital_name: 'CarePulse Medical Center',
-            });
-          } catch (createErr: any) {
-            if (createErr?.code === 'auth/email-already-in-use') {
-              throw new Error('Invalid email or password for registered Firebase account.');
-            }
-            if (createErr?.code === 'auth/weak-password') {
-              throw new Error('Password must be at least 6 characters.');
-            }
-            throw fbLoginErr;
-          }
-        } else {
-          throw fbLoginErr;
-        }
-      }
+      // 1. STRICT Firebase Authentication Sign In — Authenticates directly against Firebase Auth
+      const userCredential = await loginWithEmail(email, pass, rememberMe);
 
       if (!userCredential || !userCredential.user) {
         throw new Error('Firebase authentication failed. No user found.');
@@ -216,8 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.error('Firebase Auth operation failed:', err);
       let message = 'Unable to sign in. Please verify your credentials.';
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-        message = 'Invalid email or password.';
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        message = 'Invalid email or password. If you do not have an account yet, please click "Sign Up" above to register.';
       } else if (err.code === 'auth/too-many-requests') {
         message = 'Access temporarily locked due to multiple failed attempts. Try again in a few minutes.';
       } else if (err.code === 'auth/operation-not-allowed') {

@@ -24,11 +24,14 @@ class HAPIFHIRClient:
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self._timeout = timeout_ms / 1000.0
+        self.last_error: str | None = None
 
     async def upsert_patient(
         self, patient_id: str, patient_resource: dict[str, Any]
-    ) -> dict[str, Any] | None:
-        """PUT /Patient/{id} – creates or updates the synthetic Patient on HAPI."""
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """PUT /Patient/{id} – creates or updates the synthetic Patient on HAPI.
+        Returns (response_dict, error_string).
+        """
         url = f"{self.base_url}/Patient/{patient_id}"
         resource = dict(patient_resource)
         resource["id"] = patient_id
@@ -44,13 +47,16 @@ class HAPIFHIRClient:
                     },
                 )
                 resp.raise_for_status()
-                return resp.json()
+                self.last_error = None
+                return resp.json(), None
         except (httpx.HTTPError, httpx.TimeoutException) as exc:
-            logger.warning("HAPI upsert_patient (%s) failed: %s", patient_id, exc)
-            return None
+            err_msg = f"HAPI upsert_patient ({patient_id}) failed: {exc}"
+            logger.warning(err_msg)
+            self.last_error = err_msg
+            return None, err_msg
 
-    async def create_resource(self, resource: dict[str, Any]) -> dict[str, Any] | None:
-        """POST a FHIR resource to HAPI. Returns response JSON or None on error."""
+    async def create_resource(self, resource: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
+        """POST a FHIR resource to HAPI. Returns (response_dict, error_string)."""
         resource_type = resource.get("resourceType", "Observation")
         url = f"{self.base_url}/{resource_type}"
         try:
@@ -64,15 +70,18 @@ class HAPIFHIRClient:
                     },
                 )
                 resp.raise_for_status()
-                return resp.json()
+                self.last_error = None
+                return resp.json(), None
         except (httpx.HTTPError, httpx.TimeoutException) as exc:
-            logger.warning("HAPI create_resource failed: %s", exc)
-            return None
+            err_msg = f"HAPI create_resource failed: {exc}"
+            logger.warning(err_msg)
+            self.last_error = err_msg
+            return None, err_msg
 
     async def get_resource(
         self, resource_type: str, resource_id: str
-    ) -> dict[str, Any] | None:
-        """GET a FHIR resource by type and id. Returns JSON or None."""
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """GET a FHIR resource by type and id. Returns (response_dict, error_string)."""
         url = f"{self.base_url}/{resource_type}/{resource_id}"
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
@@ -81,7 +90,31 @@ class HAPIFHIRClient:
                     headers={"Accept": "application/fhir+json"},
                 )
                 resp.raise_for_status()
-                return resp.json()
+                self.last_error = None
+                return resp.json(), None
         except (httpx.HTTPError, httpx.TimeoutException) as exc:
-            logger.warning("HAPI get_resource failed: %s", exc)
-            return None
+            err_msg = f"HAPI get_resource ({resource_type}/{resource_id}) failed: {exc}"
+            logger.warning(err_msg)
+            self.last_error = err_msg
+            return None, err_msg
+
+    async def search_resources(
+        self, resource_type: str, params: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """GET /{resourceType}?params... Returns (Bundle_dict, error_string)."""
+        url = f"{self.base_url}/{resource_type}"
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                resp = await client.get(
+                    url,
+                    params=params or {},
+                    headers={"Accept": "application/fhir+json"},
+                )
+                resp.raise_for_status()
+                self.last_error = None
+                return resp.json(), None
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            err_msg = f"HAPI search_resources ({resource_type}) failed: {exc}"
+            logger.warning(err_msg)
+            self.last_error = err_msg
+            return None, err_msg

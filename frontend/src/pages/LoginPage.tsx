@@ -390,6 +390,41 @@ export function LoginPage() {
                     </button>
                   </p>
                 </div>
+
+                {/* Verified Firebase Clinician Accounts */}
+                <div className="pt-3 border-t border-slate-100">
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center mb-2">
+                    Verified Firebase Staff Accounts
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail('dr.rivera@hospital.carepulse.org');
+                        setPassword('DoctorPassword123!');
+                        clearError();
+                        setFormValidationMsg(null);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium text-left truncate transition-colors"
+                      title="Click to fill: dr.rivera@hospital.carepulse.org"
+                    >
+                      🩺 Dr. Rivera (Cardiology)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail('nurse.chen@hospital.carepulse.org');
+                        setPassword('NursePassword123!');
+                        clearError();
+                        setFormValidationMsg(null);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium text-left truncate transition-colors"
+                      title="Click to fill: nurse.chen@hospital.carepulse.org"
+                    >
+                      🩹 Nurse Chen (Telemetry)
+                    </button>
+                  </div>
+                </div>
               </form>
             )}
 

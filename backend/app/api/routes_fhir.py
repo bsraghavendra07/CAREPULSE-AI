@@ -150,20 +150,26 @@ async def ingest_observation(payload: dict[str, Any]) -> dict[str, Any]:
         "gender": p_profile.get("gender", "unknown"),
         "birthDate": p_profile.get("birthDate", "1970-01-01"),
     }
-    hapi_patient_res = await _hapi_client.upsert_patient(patient_id, syn_patient)
+    hapi_patient_res, hapi_patient_err = await _hapi_client.upsert_patient(patient_id, syn_patient)
+    _local_store.store(syn_patient)
 
-    # Step B: Store locally
+    # Step B: Store locally as authoritative backup
     local_id = _local_store.store(obs)
 
     # Step C: Submit to Real HAPI FHIR
-    hapi_obs_res = await _hapi_client.create_resource(obs)
+    hapi_obs_res, hapi_obs_err = await _hapi_client.create_resource(obs)
     hapi_resource_id = None
     retrieved_from_hapi = None
+    retrieval_err = None
 
     if hapi_obs_res and "id" in hapi_obs_res:
         hapi_resource_id = str(hapi_obs_res["id"])
         # Step D: Retrieve each submitted Observation from HAPI FHIR to prove live cloud persistence
-        retrieved_from_hapi = await _hapi_client.get_resource("Observation", hapi_resource_id)
+        retrieved_from_hapi, retrieval_err = await _hapi_client.get_resource("Observation", hapi_resource_id)
+
+    is_hapi_successful = (hapi_resource_id is not None) and (retrieved_from_hapi is not None)
+    storage_destination = "HAPI_FHIR_CLOUD" if is_hapi_successful else "LOCAL_FALLBACK_STORE"
+    storage_mode = "LIVE_HAPI_CLOUD" if is_hapi_successful else "LOCAL_FALLBACK"
 
     # Step E: Ingest reading into telemetry manager so actual backend readings reach dashboard
     broadcast_payload = None
@@ -183,6 +189,8 @@ async def ingest_observation(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "status": "success",
         "endpoint": "/api/fhir/observation",
+        "storage_destination": storage_destination,
+        "storage_mode": storage_mode,
         "local_store_id": local_id,
         "hapi_resource_id": hapi_resource_id,
         "loinc_code": loinc_code,
@@ -193,7 +201,173 @@ async def ingest_observation(payload: dict[str, Any]) -> dict[str, Any]:
         "stored_observation": obs,
         "hapi_created_response": hapi_obs_res,
         "hapi_retrieved_response": retrieved_from_hapi,
+        "hapi_error": hapi_obs_err or retrieval_err or hapi_patient_err,
         "telemetry_broadcast": broadcast_payload is not None,
+    }
+
+
+# ─── Patient Management Endpoints ──────────────────────────────────────────
+
+@router.put("/patient/{patient_id}")
+@router.post("/patient")
+async def upsert_patient_record(patient_id: str | None = None, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Create or update a synthetic Patient on HAPI FHIR and local store."""
+    if _local_store is None or _hapi_client is None:
+        raise HTTPException(status_code=503, detail="FHIR subsystems not initialised")
+
+    body = payload or {}
+    pid = patient_id or body.get("id")
+    if not pid:
+        raise HTTPException(status_code=400, detail="Patient ID is required")
+
+    p_profile = _patients.get(pid, {})
+    name_parts = body.get("name")
+    if not name_parts:
+        display_name = p_profile.get("name") or f"Synthetic Patient {pid}"
+        parts = display_name.split()
+        name_parts = [
+            {
+                "use": "official",
+                "family": parts[-1] if len(parts) > 1 else parts[0],
+                "given": parts[:-1] if len(parts) > 1 else ["Synthetic"],
+            }
+        ]
+
+    patient_resource = {
+        "resourceType": "Patient",
+        "id": pid,
+        "identifier": [
+            {
+                "system": "https://carepulse.health/patients",
+                "value": pid,
+            }
+        ],
+        "active": True,
+        "name": name_parts,
+        "gender": body.get("gender") or p_profile.get("gender", "unknown"),
+        "birthDate": body.get("birthDate") or p_profile.get("birthDate", "1970-01-01"),
+    }
+
+    # Store in local fallback store
+    local_id = _local_store.store(patient_resource)
+
+    # Upsert to HAPI FHIR Cloud
+    hapi_res, hapi_err = await _hapi_client.upsert_patient(pid, patient_resource)
+
+    # Verify retrieval from HAPI
+    retrieved_res = None
+    retrieval_err = None
+    if hapi_res is not None:
+        retrieved_res, retrieval_err = await _hapi_client.get_resource("Patient", pid)
+
+    is_hapi_stored = (hapi_res is not None) and (retrieved_res is not None)
+    storage_destination = "HAPI_FHIR_CLOUD" if is_hapi_stored else "LOCAL_FALLBACK_STORE"
+
+    return {
+        "status": "success",
+        "patient_id": pid,
+        "storage_destination": storage_destination,
+        "storage_mode": "LIVE_HAPI_CLOUD" if is_hapi_stored else "LOCAL_FALLBACK",
+        "local_store_id": local_id,
+        "hapi_response": hapi_res,
+        "hapi_retrieved": retrieved_res,
+        "hapi_error": hapi_err or retrieval_err,
+        "resource": patient_resource,
+    }
+
+
+@router.get("/patient/{patient_id}")
+async def get_patient_record(patient_id: str) -> dict[str, Any]:
+    """Retrieve a Patient resource, checking HAPI FHIR cloud first then local fallback."""
+    if _local_store is None or _hapi_client is None:
+        raise HTTPException(status_code=503, detail="FHIR subsystems not initialised")
+
+    # Try HAPI first
+    remote, hapi_err = await _hapi_client.get_resource("Patient", patient_id)
+    if remote is not None:
+        return {
+            "source": "HAPI_FHIR_CLOUD",
+            "patient_id": patient_id,
+            "resource": remote,
+            "error": None,
+        }
+
+    # Check local store
+    local_patient = _local_store.get("Patient", patient_id)
+    if local_patient is not None:
+        return {
+            "source": "LOCAL_FALLBACK_STORE",
+            "patient_id": patient_id,
+            "resource": local_patient,
+            "error": f"HAPI cloud unavailable or patient not found: {hapi_err}",
+        }
+
+    # Check synthetic patient roster
+    p_profile = _patients.get(patient_id)
+    if p_profile is not None:
+        syn_patient = {
+            "resourceType": "Patient",
+            "id": patient_id,
+            "name": [{"use": "official", "text": p_profile.get("name", "Synthetic Patient")}],
+            "gender": p_profile.get("gender", "unknown"),
+        }
+        return {
+            "source": "LOCAL_SYNTHETIC_ROSTER",
+            "patient_id": patient_id,
+            "resource": syn_patient,
+            "error": f"Retrieved from synthetic memory: {hapi_err}",
+        }
+
+    raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found in HAPI or local store")
+
+
+@router.get("/patient/{patient_id}/observations")
+async def get_patient_observations(patient_id: str) -> dict[str, Any]:
+    """Retrieve all observations for a patient from HAPI FHIR and local fallback."""
+    if _local_store is None or _hapi_client is None:
+        raise HTTPException(status_code=503, detail="FHIR subsystems not initialised")
+
+    # 1. Query HAPI cloud
+    hapi_bundle, hapi_err = await _hapi_client.search_resources(
+        "Observation", {"subject": f"Patient/{patient_id}"}
+    )
+
+    # 2. Query Local Store
+    local_obs = _local_store.search("Observation", patient_id=patient_id)
+
+    cloud_count = len(hapi_bundle.get("entry", [])) if hapi_bundle else 0
+    local_count = len(local_obs)
+
+    return {
+        "patient_id": patient_id,
+        "hapi_cloud_available": hapi_bundle is not None,
+        "hapi_observations_count": cloud_count,
+        "local_observations_count": local_count,
+        "storage_mode": "LIVE_HAPI_CLOUD" if hapi_bundle is not None else "LOCAL_FALLBACK",
+        "hapi_bundle": hapi_bundle,
+        "local_observations": local_obs,
+        "hapi_error": hapi_err,
+    }
+
+
+@router.get("/status")
+async def get_fhir_status() -> dict[str, Any]:
+    """Health check for HAPI FHIR cloud connection and local store."""
+    if _local_store is None or _hapi_client is None:
+        return {"status": "uninitialised", "hapi_connected": False}
+
+    meta, err = await _hapi_client.get_resource("metadata", "")
+    is_hapi_connected = meta is not None and "fhirVersion" in meta
+
+    return {
+        "status": "healthy" if is_hapi_connected else "degraded",
+        "hapi_connected": is_hapi_connected,
+        "hapi_base_url": _hapi_client.base_url,
+        "hapi_fhir_version": meta.get("fhirVersion") if meta else None,
+        "hapi_error": err,
+        "local_store_total_resources": len(_local_store._resources),
+        "local_store_patients": len(_local_store._by_patient),
+        "storage_mode": "LIVE_HAPI_CLOUD" if is_hapi_connected else "LOCAL_FALLBACK",
     }
 
 
@@ -207,17 +381,26 @@ async def get_patient_bundle(patient_id: str) -> dict[str, Any]:
 
 @router.get("/observation/{observation_id}")
 async def get_observation(observation_id: str) -> dict[str, Any]:
-    """Get a single Observation resource by id."""
-    if _local_store is None:
+    """Get a single Observation resource by id, checking local store and HAPI FHIR."""
+    if _local_store is None or _hapi_client is None:
         raise HTTPException(status_code=503, detail="FHIR store not initialised")
 
+    # Check local store
     obs = _local_store.get("Observation", observation_id)
     if obs is not None:
-        return obs
+        return {
+            "source": "LOCAL_FALLBACK_STORE",
+            "storage_destination": "LOCAL_FALLBACK_STORE",
+            "observation": obs,
+        }
 
-    if _hapi_client is not None:
-        remote = await _hapi_client.get_resource("Observation", observation_id)
-        if remote is not None:
-            return remote
+    # Check HAPI
+    remote, err = await _hapi_client.get_resource("Observation", observation_id)
+    if remote is not None:
+        return {
+            "source": "HAPI_FHIR_CLOUD",
+            "storage_destination": "HAPI_FHIR_CLOUD",
+            "observation": remote,
+        }
 
-    raise HTTPException(status_code=404, detail=f"Observation {observation_id} not found")
+    raise HTTPException(status_code=404, detail=f"Observation {observation_id} not found (local or HAPI)")

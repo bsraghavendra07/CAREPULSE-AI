@@ -34,7 +34,26 @@ export function FhirPage({ patients }: FhirPageProps) {
   const [ingestLoading, setIngestLoading] = useState(false);
   const [ingestResult, setIngestResult] = useState<any | null>(null);
 
+  // Patient Upsert State
+  const [patientUpsertLoading, setPatientUpsertLoading] = useState(false);
+  const [patientUpsertResult, setPatientUpsertResult] = useState<any | null>(null);
+
+  // Live FHIR Server Health Status
+  const [fhirStatus, setFhirStatus] = useState<any | null>(null);
+
   const selectedPatient = patients.find((p) => p.id === selectedPatientId) || patients[0];
+
+  const checkFhirStatus = async () => {
+    try {
+      const resp = await fetch('/api/fhir/status');
+      if (resp.ok) {
+        const data = await resp.json();
+        setFhirStatus(data);
+      }
+    } catch {
+      setFhirStatus({ hapi_connected: false, storage_mode: 'LOCAL_FALLBACK' });
+    }
+  };
 
   const loadBundle = async () => {
     if (!selectedPatientId) return;
@@ -51,6 +70,7 @@ export function FhirPage({ patients }: FhirPageProps) {
   };
 
   useEffect(() => {
+    checkFhirStatus();
     loadBundle();
   }, [selectedPatientId]);
 
@@ -59,6 +79,40 @@ export function FhirPage({ patients }: FhirPageProps) {
     navigator.clipboard.writeText(JSON.stringify(bundle, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleUpsertPatient = async () => {
+    try {
+      setPatientUpsertLoading(true);
+      setPatientUpsertResult(null);
+
+      const resp = await fetch(`/api/fhir/patient/${selectedPatientId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedPatientId,
+          name: [
+            {
+              use: 'official',
+              text: selectedPatient?.name || `Patient ${selectedPatientId}`,
+            },
+          ],
+          gender: selectedPatient?.gender || 'unknown',
+          birthDate: selectedPatient?.birthDate || '1980-01-01',
+        }),
+      });
+
+      const json = await resp.json();
+      if (!resp.ok) {
+        throw new Error(json.detail || `Upsert failed with status ${resp.status}`);
+      }
+      setPatientUpsertResult(json);
+      checkFhirStatus();
+    } catch (err: any) {
+      setPatientUpsertResult({ error: err.message });
+    } finally {
+      setPatientUpsertLoading(false);
+    }
   };
 
   const handleTestIngest = async () => {
@@ -76,14 +130,14 @@ export function FhirPage({ patients }: FhirPageProps) {
         }),
       });
 
+      const json = await resp.json();
       if (!resp.ok) {
-        throw new Error(`Ingestion failed with status ${resp.status}`);
+        throw new Error(json.detail || `Ingestion failed with status ${resp.status}`);
       }
 
-      const json = await resp.json();
       setIngestResult(json);
-      // Reload bundle to reflect new observation
       loadBundle();
+      checkFhirStatus();
     } catch (err: any) {
       setIngestResult({ error: err.message });
     } finally {
@@ -107,12 +161,19 @@ export function FhirPage({ patients }: FhirPageProps) {
 
         {/* Server Status Badges */}
         <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-[#11231a] text-[#4ade80] border border-[#4A90E2]/30">
-            <span className="h-2 w-2 rounded-full bg-[#4ade80] animate-pulse" />
-            <span>HAPI FHIR Cloud: Connected</span>
-          </div>
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-[#111624] text-[#38bdf8] border border-[#1e2a42]">
-            <Database className="h-3.5 w-3.5" />
+          {fhirStatus?.hapi_connected ? (
+            <div className="flex items-center space-x-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>HAPI FHIR Cloud: Connected ({fhirStatus.hapi_fhir_version || 'R4'})</span>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+              <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+              <span>HAPI FHIR Cloud: {fhirStatus ? 'Offline / Fallback Active' : 'Checking...'}</span>
+            </div>
+          )}
+          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+            <Database className="h-3.5 w-3.5 text-sky-600" />
             <span>Local Fallback Store: Active</span>
           </div>
         </div>
@@ -155,8 +216,77 @@ export function FhirPage({ patients }: FhirPageProps) {
 
       {/* Main 2-Column Deck: Ingestion Test Deck + Live Bundle Explorer */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Test FHIR Ingestion */}
+        {/* Left Column: Test FHIR Ingestion & Patient Sync */}
         <div className="lg:col-span-5 space-y-4">
+          {/* Card 1: Synthetic Patient Upsert */}
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-[#111827] flex items-center space-x-2">
+                <Cloud className="h-4 w-4 text-[#4A90E2]" />
+                <span>Synthetic Patient HAPI Sync</span>
+              </h3>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-700">
+                PUT /Patient/:id
+              </span>
+            </div>
+            <p className="text-[11px] text-[#4B5563]">
+              Ensures synthetic patient profile exists on public HAPI FHIR before submitting observations.
+            </p>
+
+            <div className="flex items-center space-x-2 pt-1">
+              <button
+                onClick={handleUpsertPatient}
+                disabled={patientUpsertLoading}
+                className="flex-1 py-2 px-3 rounded-xl bg-[#4A90E2] hover:bg-[#3b7ac2] text-white font-semibold text-xs transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50"
+              >
+                {patientUpsertLoading ? (
+                  <span>Syncing Patient with HAPI...</span>
+                ) : (
+                  <>
+                    <Server className="h-3.5 w-3.5" />
+                    <span>Create / Update Patient on HAPI</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {patientUpsertResult && (
+              <div className="rounded-xl bg-[#F0F7FF] border border-[#E5E7EB] p-3 text-xs space-y-1.5 animate-in fade-in">
+                {patientUpsertResult.error ? (
+                  <div className="text-rose-600 flex items-center space-x-1.5 font-bold">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>Sync Error: {patientUpsertResult.error}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-[#4A90E2] flex items-center space-x-1.5">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Patient Synced</span>
+                      </span>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
+                          patientUpsertResult.storage_destination === 'HAPI_FHIR_CLOUD'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {patientUpsertResult.storage_destination === 'HAPI_FHIR_CLOUD'
+                          ? '✅ Stored in HAPI FHIR Cloud'
+                          : '⚠️ Stored in Local Fallback Store'}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-600 font-mono">
+                      <div>Patient ID: {patientUpsertResult.patient_id}</div>
+                      <div>Mode: {patientUpsertResult.storage_mode}</div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Card 2: Test FHIR Ingestion */}
           <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm p-5 space-y-4">
             <div>
               <h3 className="text-sm font-bold text-[#111827] flex items-center space-x-2">
@@ -213,7 +343,7 @@ export function FhirPage({ patients }: FhirPageProps) {
               <button
                 onClick={handleTestIngest}
                 disabled={ingestLoading}
-                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 shadow-sm"
               >
                 {ingestLoading ? (
                   <span>Submitting to HAPI FHIR...</span>
@@ -226,12 +356,12 @@ export function FhirPage({ patients }: FhirPageProps) {
               </button>
             </div>
 
-            {/* Ingestion Response Output */}
+            {/* Ingestion Response Output with explicit storage mode */}
             {ingestResult && (
               <div className="rounded-xl bg-[#F0F7FF] border border-[#E5E7EB] p-3 text-xs space-y-2 animate-in fade-in">
                 {ingestResult.error ? (
-                  <div className="text-rose-400 flex items-center space-x-1.5 font-bold">
-                    <AlertCircle className="h-4 w-4" />
+                  <div className="text-rose-600 flex items-center space-x-1.5 font-bold">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>Error: {ingestResult.error}</span>
                   </div>
                 ) : (
@@ -239,19 +369,34 @@ export function FhirPage({ patients }: FhirPageProps) {
                     <div className="flex items-center justify-between text-[#4A90E2] font-bold">
                       <div className="flex items-center space-x-1.5">
                         <CheckCircle2 className="h-4 w-4" />
-                        <span>201 Created & Verified</span>
+                        <span>201 Created</span>
                       </div>
-                      <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-[#D9F0FF] text-[#4A90E2]">
-                        HAPI ID: {ingestResult.hapi_resource_id || 'Stored'}
+                      <span
+                        className={`font-mono text-[10px] px-2 py-0.5 rounded font-bold ${
+                          ingestResult.storage_destination === 'HAPI_FHIR_CLOUD'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {ingestResult.storage_destination === 'HAPI_FHIR_CLOUD'
+                          ? '✅ HAPI FHIR Cloud (Live)'
+                          : '⚠️ Local Fallback Store'}
                       </span>
                     </div>
-                    <div className="text-[10px] text-[#4B5563] space-y-1 font-mono pt-1">
+                    <div className="text-[10px] text-slate-700 space-y-1 font-mono pt-1">
                       <div>LOINC: {ingestResult.loinc_code} ({ingestResult.vital_name})</div>
                       <div>Unit: {ingestResult.ucum_unit} | Value: {ingestResult.value}</div>
                       <div>Subject: {ingestResult.patient_reference}</div>
-                      <div className="text-[#4B5563] text-[9px] pt-1">
-                        Stored in HAPI FHIR cloud and propagated to real-time telemetry stream.
-                      </div>
+                      {ingestResult.hapi_resource_id && (
+                        <div className="text-emerald-700 font-semibold">
+                          HAPI Cloud ID: {ingestResult.hapi_resource_id} (Verified)
+                        </div>
+                      )}
+                      {ingestResult.hapi_error && (
+                        <div className="text-amber-700">
+                          HAPI Server Notice: {ingestResult.hapi_error}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

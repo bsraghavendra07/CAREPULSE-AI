@@ -225,6 +225,24 @@ export interface PerformanceReport {
   artifact_flag_rate: number;
   alerts_per_patient_day?: number;
   total_monitored_patient_days?: number;
+  false_alerts_suppressed_by_sqi?: number;
+  scenario_validation?: {
+    slow_deterioration: {
+      events_count: number;
+      detected_count: number;
+      avg_lead_time_ticks: number;
+    };
+    stable_recovery: {
+      events_count: number;
+      false_alerts_in_recovery: number;
+      stability_rate_pct: number;
+    };
+    sensor_artifact: {
+      artifacts_detected: number;
+      artifacts_low_flags: number;
+      false_alerts_suppressed: number;
+    };
+  };
   per_patient: Record<string, {
     total_ticks: number;
     news2_alerts_fired: number;
