@@ -13,6 +13,13 @@ import {
   evaluateRiskAndGenerateAlert,
 } from '../lib/multiChannelAlertEngine';
 import {
+  alertEmailDeduplicator,
+  sendCarePulseEmailAlert,
+  formatCarePulseAlertBody,
+  determineSpecialistDepartment,
+  ClinicalAlertEmailPayload,
+} from '../lib/formspree';
+import {
   Heart,
   Activity,
   Wind,
@@ -234,6 +241,18 @@ export function VitalsMonitorPage({
       alertContacts
     );
     setMultiChannelAlert(alert);
+
+    setClinicalAlerts([
+      {
+        id: `sim-urgent-${Date.now()}`,
+        level: 'URGENT',
+        title: 'High-risk Deterioration Detected',
+        reading: 'HR: 132 bpm · SpO₂: 87%',
+        rule: 'Sustained decrease in SpO₂ with rising heart rate detected.',
+        patient_fact: selectedPatient?.condition || 'COPD',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
   };
 
   const handleResetNominal = () => {
@@ -248,6 +267,9 @@ export function VitalsMonitorPage({
     setEarlyWarningScore(1);
     setEarlyWarningTier('Low');
     setMultiChannelAlert(null);
+    setClinicalAlerts([]);
+    alertEmailDeduplicator.reset(selectedPatient?.id || 'P-001');
+    setAutoEmailState(null);
   };
 
   // ── Active Data Source (Virtual Wearable vs BIDMC Replay) ──
@@ -662,6 +684,111 @@ export function VitalsMonitorPage({
       disclaimer: 'Decision-support suggestion — not a clinical diagnosis.',
     });
   };
+
+  // ── Formspree Automatic Email Dispatch Hook (Sections 1, 3, 5, 8) ──
+  const [autoEmailState, setAutoEmailState] = useState<{
+    status: 'Ready' | 'Sending email...' | '✅ Email Alert Sent' | 'Delivery Failed';
+    department: string;
+    severity: 'REVIEW' | 'URGENT';
+    timestamp: string;
+    previewBody: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const topAlert = clinicalAlerts[0];
+    if (!topAlert || !selectedPatient) return;
+
+    // Filter out sensor noise / artifacts / normal readings
+    if (
+      topAlert.is_sensor_problem ||
+      topAlert.level === 'WATCH' ||
+      topAlert.level === 'SENSOR ARTIFACT' ||
+      topAlert.level === 'DEVICE ALERT'
+    ) {
+      alertEmailDeduplicator.reset(selectedPatient.id);
+      return;
+    }
+
+    // Only genuine REVIEW or URGENT alerts qualify
+    if (topAlert.level === 'REVIEW' || topAlert.level === 'URGENT') {
+      const severity = topAlert.level;
+
+      // Duplicate prevention rule:
+      // Send one email only for ongoing alert; send again only if severity escalates (REVIEW -> URGENT)
+      if (alertEmailDeduplicator.shouldSend(selectedPatient.id, severity)) {
+        alertEmailDeduplicator.recordSent(selectedPatient.id, severity);
+
+        // Determine specialist department using existing patient record and condition routing
+        const dept = determineSpecialistDepartment(selectedPatient, liveVitals, topAlert.title);
+        const actionText =
+          severity === 'URGENT'
+            ? 'Immediate clinical review is recommended.'
+            : 'Clinician assessment and clinical review are recommended.';
+        const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const payload: ClinicalAlertEmailPayload = {
+          patientId: selectedPatient.id,
+          patientName: selectedPatient.name,
+          assignedDepartment: dept,
+          heartRate: liveVitals.hr || 132,
+          spo2: liveVitals.spo2 || 87,
+          respiratoryRate: liveVitals.rr || 26,
+          temperature: liveVitals.temp || 37.8,
+          severity,
+          reason: topAlert.rule || topAlert.title || 'Sustained decrease in SpO₂ with rising heart rate detected.',
+          recommendedAction: actionText,
+          timestamp: new Date().toLocaleString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          isTest: false,
+        };
+
+        setAutoEmailState({
+          status: 'Sending email...',
+          department: dept,
+          severity,
+          timestamp: timeNow,
+          previewBody: formatCarePulseAlertBody(payload),
+        });
+
+        // Safe asynchronous dispatch - never blocks live monitoring or telemetry
+        sendCarePulseEmailAlert(payload)
+          .then((res) => {
+            if (res.ok) {
+              setAutoEmailState({
+                status: '✅ Email Alert Sent',
+                department: dept,
+                severity,
+                timestamp: res.timestamp,
+                previewBody: res.formattedBody,
+              });
+            } else {
+              setAutoEmailState({
+                status: 'Delivery Failed',
+                department: dept,
+                severity,
+                timestamp: res.timestamp,
+                previewBody: res.formattedBody,
+              });
+            }
+          })
+          .catch((err) => {
+            console.error('[CarePulse Formspree] Async catch:', err);
+            setAutoEmailState({
+              status: 'Delivery Failed',
+              department: dept,
+              severity,
+              timestamp: timeNow,
+              previewBody: formatCarePulseAlertBody(payload),
+            });
+          });
+      }
+    }
+  }, [clinicalAlerts, selectedPatient?.id, liveVitals.hr, liveVitals.spo2]);
 
   // ── Sync with WebSocket Ticks ──
   const tick = latestTicks[selectedPatientId];
@@ -2036,6 +2163,9 @@ export function VitalsMonitorPage({
         onSimulateHighRisk={handleSimulateHighRisk}
         onResetNominal={handleResetNominal}
         isSimulatedHighRisk={isSimulatedHighRisk}
+        selectedPatient={selectedPatient}
+        clinicalAlert={clinicalAlerts[0] || null}
+        autoEmailDispatchState={autoEmailState}
       />
 
       {/* ─────────────────────────────────────────────────────────────

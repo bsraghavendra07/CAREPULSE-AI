@@ -16,6 +16,7 @@ import {
   User,
   Phone,
   Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import {
   MultiChannelAlert,
@@ -23,6 +24,14 @@ import {
   DispatchedSmsRecord,
   DispatchedEmailRecord,
 } from '../../lib/multiChannelAlertEngine';
+import {
+  sendCarePulseEmailAlert,
+  formatCarePulseAlertBody,
+  determineSpecialistDepartment,
+  FORMSPREE_ENDPOINT,
+  ClinicalAlertEmailPayload,
+} from '../../lib/formspree';
+import { PatientProfile } from '../../types/patient';
 
 interface MultiChannelAlertsDashboardProps {
   currentAlert: MultiChannelAlert | null;
@@ -37,6 +46,24 @@ interface MultiChannelAlertsDashboardProps {
   onSimulateHighRisk: () => void;
   onResetNominal: () => void;
   isSimulatedHighRisk?: boolean;
+  selectedPatient?: PatientProfile | null;
+  clinicalAlert?: {
+    id: string;
+    level: 'WATCH' | 'REVIEW' | 'URGENT' | 'SENSOR ARTIFACT' | 'DEVICE ALERT';
+    title: string;
+    reading?: string;
+    rule?: string;
+    patient_fact?: string;
+    time: string;
+    is_sensor_problem?: boolean;
+  } | null;
+  autoEmailDispatchState?: {
+    status: 'Ready' | 'Sending email...' | '✅ Email Alert Sent' | 'Delivery Failed';
+    department: string;
+    severity: 'REVIEW' | 'URGENT';
+    timestamp: string;
+    previewBody: string;
+  } | null;
 }
 
 /**
@@ -116,6 +143,9 @@ export function MultiChannelAlertsDashboard({
   onSimulateHighRisk,
   onResetNominal,
   isSimulatedHighRisk = false,
+  selectedPatient = null,
+  clinicalAlert = null,
+  autoEmailDispatchState = null,
 }: MultiChannelAlertsDashboardProps) {
   // Active selected SMS recipient tab index
   const [selectedRecipientIndex, setSelectedRecipientIndex] = useState(0);
@@ -125,6 +155,16 @@ export function MultiChannelAlertsDashboard({
   const [smsStatus, setSmsStatus] = useState<string>('Standby');
   const [smsSentTime, setSmsSentTime] = useState<string | null>(null);
   const [simulatedSmsMessage, setSimulatedSmsMessage] = useState<string | null>(null);
+
+  // Formspree Manual Demo / Test State
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+  const [manualTestEmailState, setManualTestEmailState] = useState<{
+    status: '✅ Test Email Sent' | 'Delivery Failed';
+    department: string;
+    severity: 'REVIEW' | 'URGENT';
+    timestamp: string;
+    previewBody: string;
+  } | null>(null);
 
   const activeSmsList = currentAlert?.dispatchedSms || [];
   const activeEmailList = currentAlert?.dispatchedEmails || [];
@@ -141,15 +181,130 @@ export function MultiChannelAlertsDashboard({
     contacts.find((c) => c.role === 'Parent / Caregiver') ||
     contacts[0] || {
       id: 'default-parent',
-      patientId: 'P-001',
-      name: 'Anitha Sharma',
+      patientId: selectedPatient?.id || 'P-001',
+      name: selectedPatient ? `${selectedPatient.name.split(' ')[0]} Family` : 'Anitha Sharma',
       role: 'Parent / Caregiver',
-      email: 'anitha.sharma@example.com',
+      email: 'caregiver@example.com',
       phone: '+91 98450 12345',
       language: 'English',
       emailAlerts: true,
       smsAlerts: true,
     };
+
+  // Resolved patient info for department and email routing
+  const patientObj = selectedPatient || {
+    id: 'P-001',
+    name: 'Anitha Sharma',
+    department: 'Pulmonology',
+    condition: 'COPD & Hypercapnic Respiratory Failure',
+    specialist_name: 'Dr. Elena Rostova, MD',
+  };
+
+  const resolvedDepartment = determineSpecialistDepartment(
+    patientObj as any,
+    currentVitals,
+    clinicalAlert?.title
+  );
+
+  const resolvedSeverity: 'REVIEW' | 'URGENT' =
+    clinicalAlert?.level === 'URGENT' || isSimulatedHighRisk || currentRiskLevel === 'HIGH'
+      ? 'URGENT'
+      : 'REVIEW';
+
+  // Manual Demo Test Email Handler (Section 7)
+  const handleSendTestEmail = async () => {
+    setIsSendingTestEmail(true);
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const fullDateStr = new Date().toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const payload: ClinicalAlertEmailPayload = {
+      patientId: patientObj.id,
+      patientName: patientObj.name,
+      assignedDepartment: resolvedDepartment,
+      heartRate: currentVitals.hr || 132,
+      spo2: currentVitals.spo2 || 87,
+      respiratoryRate: currentVitals.rr || 26,
+      temperature: currentVitals.temp || 37.8,
+      severity: resolvedSeverity,
+      reason:
+        resolvedSeverity === 'URGENT'
+          ? 'Sustained decrease in SpO₂ with rising heart rate detected.'
+          : 'SpO₂ gradually decreasing with respiratory history increasing clinical relevance.',
+      recommendedAction:
+        resolvedSeverity === 'URGENT'
+          ? 'Immediate clinical review is recommended.'
+          : 'Clinician assessment and clinical review are recommended.',
+      timestamp: fullDateStr,
+      isTest: true,
+    };
+
+    try {
+      const res = await sendCarePulseEmailAlert(payload);
+      if (res.ok) {
+        setManualTestEmailState({
+          status: '✅ Test Email Sent',
+          department: resolvedDepartment,
+          severity: resolvedSeverity,
+          timestamp: timeStr,
+          previewBody: res.formattedBody,
+        });
+      } else {
+        setManualTestEmailState({
+          status: 'Delivery Failed',
+          department: resolvedDepartment,
+          severity: resolvedSeverity,
+          timestamp: timeStr,
+          previewBody: res.formattedBody,
+        });
+      }
+    } catch {
+      setManualTestEmailState({
+        status: 'Delivery Failed',
+        department: resolvedDepartment,
+        severity: resolvedSeverity,
+        timestamp: timeStr,
+        previewBody: formatCarePulseAlertBody(payload),
+      });
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
+
+  // Active email alert state priority: manual test -> auto dispatch -> default preview
+  const activeEmailState = manualTestEmailState || autoEmailDispatchState;
+
+  const defaultEmailPreview = formatCarePulseAlertBody({
+    patientId: patientObj.id,
+    patientName: patientObj.name,
+    assignedDepartment: resolvedDepartment,
+    heartRate: currentVitals.hr || 132,
+    spo2: currentVitals.spo2 || 87,
+    respiratoryRate: currentVitals.rr || 26,
+    temperature: currentVitals.temp || 37.8,
+    severity: resolvedSeverity,
+    reason:
+      resolvedSeverity === 'URGENT'
+        ? 'Sustained decrease in SpO₂ with rising heart rate detected.'
+        : 'SpO₂ gradually decreasing with respiratory history increasing relevance.',
+    recommendedAction:
+      resolvedSeverity === 'URGENT'
+        ? 'Immediate clinical review is recommended.'
+        : 'Clinician assessment and clinical review are recommended.',
+    timestamp: new Date().toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  });
 
   // Sync high-risk simulation or reset
   useEffect(() => {
@@ -460,65 +615,137 @@ export function MultiChannelAlertsDashboard({
           </div>
         </div>
 
-        {/* ──────── RIGHT: AUTOMATIC EMAIL ALERT PREVIEW ──────── */}
+        {/* ──────── RIGHT: FORMSPREE CLINICAL EMAIL ALERT CARD (SECTION 6 & 7) ──────── */}
         <div className="rounded-3xl border border-[#CBD5E1] bg-[#F8FAFC] p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
-          <div>
+          <div className="space-y-4">
+            {/* Header: 📧 Email Alert + Formspree Integration Tag */}
             <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
               <div className="flex items-center space-x-2">
-                <Mail className="h-5 w-5 text-[#00A896]" />
-                <span className="text-xs font-extrabold tracking-wider uppercase text-[#131E3A]">
-                  EMAIL NOTIFICATION
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  Auto-Composed
-                </span>
+                <div className="h-8 w-8 rounded-full bg-[#00A896]/15 border border-[#00A896]/30 flex items-center justify-center">
+                  <Mail className="h-4 w-4 text-[#00A896]" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black tracking-wider uppercase text-[#131E3A]">
+                    📧 Email Alert
+                  </h4>
+                  <span className="text-[10px] text-[#64748B] font-medium">
+                    Automated clinician escalation via Formspree
+                  </span>
+                </div>
               </div>
 
-              {activeEmailList[0] && (
-                <span className="text-xs font-bold text-[#64748B]">
-                  {activeEmailList[0].timestamp}
-                </span>
-              )}
+              {/* Formspree Email Integration Badge */}
+              <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                Formspree Email Integration
+              </span>
             </div>
 
-            {activeEmailList.length > 0 ? (
-              <div className="mt-3 space-y-3">
-                {/* Subject & Recipient Meta */}
-                <div className="space-y-1 text-xs">
-                  <div>
-                    <span className="font-bold text-[#64748B]">To: </span>
-                    <span className="font-mono text-[#131E3A]">
-                      {activeEmailList[0].recipientEmail} ({activeEmailList[0].recipientName} · {activeEmailList[0].recipientRole})
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-bold text-[#64748B]">Subject: </span>
-                    <span className="font-bold text-red-600">
-                      {activeEmailList[0].subject}
-                    </span>
-                  </div>
-                </div>
+            {/* Recipient & Routing Details */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-white border border-[#E2E8F0] text-xs">
+              <div>
+                <span className="text-[10px] text-[#64748B] block font-semibold uppercase">Recipient</span>
+                <strong className="text-[#131E3A] truncate block" title="Registered Clinical Contact">
+                  Clinical Contact
+                </strong>
+                <span className="text-[10px] text-[#64748B]">Appropriate Dept</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-[#64748B] block font-semibold uppercase">Department</span>
+                <strong className="text-[#131E3A] truncate block" title={activeEmailState?.department || resolvedDepartment}>
+                  {activeEmailState?.department || resolvedDepartment}
+                </strong>
+                <span className="text-[10px] text-emerald-600 font-semibold">Specialist Routing</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-[#64748B] block font-semibold uppercase">Alert Severity</span>
+                <strong
+                  className={`truncate block font-bold ${
+                    (activeEmailState?.severity || resolvedSeverity) === 'URGENT'
+                      ? 'text-red-600'
+                      : 'text-amber-600'
+                  }`}
+                >
+                  {activeEmailState?.severity || resolvedSeverity}
+                </strong>
+                <span className="text-[10px] text-[#64748B]">Clinical Decision</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-[#64748B] block font-semibold uppercase">Status</span>
+                <strong
+                  className={`truncate block font-bold ${
+                    activeEmailState?.status?.includes('✅')
+                      ? 'text-emerald-600'
+                      : activeEmailState?.status?.includes('Sending') || isSendingTestEmail
+                      ? 'text-amber-600 animate-pulse'
+                      : activeEmailState?.status?.includes('Failed')
+                      ? 'text-red-500'
+                      : 'text-[#334155]'
+                  }`}
+                >
+                  {isSendingTestEmail ? 'Sending email...' : (activeEmailState?.status || 'Ready')}
+                </strong>
+                <span className="text-[10px] text-[#64748B]">
+                  {activeEmailState?.timestamp || 'Ready before sending'}
+                </span>
+              </div>
+            </div>
 
-                {/* Email Body Card */}
-                <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 text-xs font-mono text-[#334155] whitespace-pre-line leading-relaxed shadow-2xs">
-                  {activeEmailList[0].body}
-                </div>
+            {/* Email Preview */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-[11px] text-[#64748B]">
+                <span className="font-semibold uppercase tracking-wider text-[#334155]">Email Preview</span>
+                <span className="text-[10px] font-mono text-[#00A896]">
+                  Endpoint: formspree.io/f/mdegkpaz
+                </span>
+              </div>
 
-                <div className="text-[11px] text-[#64748B] flex items-center space-x-1.5">
+              {/* Formatted CarePulse Alert Email Body */}
+              <div className="bg-white rounded-2xl border border-[#CBD5E1] p-4 text-xs font-mono text-[#1E293B] whitespace-pre-line leading-relaxed shadow-2xs max-h-56 overflow-y-auto">
+                {activeEmailState?.previewBody || defaultEmailPreview}
+              </div>
+
+              {/* Status footer pill */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px]">
+                <div className="flex items-center space-x-1.5 text-[#475569]">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                  <span>Email auto-generated using registered contact address. No manual composition required.</span>
+                  <span>
+                    {activeEmailState?.status?.includes('Test')
+                      ? 'Demo/Test Email — Verified Formspree dispatch'
+                      : activeEmailState?.status?.includes('✅')
+                      ? 'Automated Email Alert Sent — Clinical deterioration event'
+                      : 'Automatic trigger: Fires on genuine REVIEW or URGENT alerts'}
+                  </span>
                 </div>
+                <span className="text-[10px] text-[#94A3B8]">
+                  Non-blocking telemetry isolation
+                </span>
               </div>
-            ) : (
-              <div className="py-12 text-center text-xs text-[#94A3B8]">
-                No email alert required for nominal readings. Email service ready.
-              </div>
-            )}
+            </div>
           </div>
 
-          <div className="pt-2 text-[10px] text-[#94A3B8] border-t border-[#E2E8F0] flex items-center justify-between">
-            <span>Email Service: Automated Decision Support</span>
-            <span>Delivery: Prototype Simulation</span>
+          {/* Manual Demo Button (Section 7) */}
+          <div className="pt-2 border-t border-[#E2E8F0]">
+            <button
+              type="button"
+              onClick={handleSendTestEmail}
+              disabled={isSendingTestEmail}
+              className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-[#1E293B] via-[#334155] to-[#1E293B] hover:from-[#0F172A] hover:to-[#1E293B] text-white font-extrabold text-sm flex items-center justify-center space-x-2 shadow-md shadow-slate-900/15 active:scale-[0.99] transition-all disabled:opacity-60 cursor-pointer"
+            >
+              {isSendingTestEmail ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
+                  <span>Sending email...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 text-[#00D2C4]" />
+                  <span>Send Test Email Alert</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-300 ml-1">
+                    Demo/Test Email
+                  </span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
