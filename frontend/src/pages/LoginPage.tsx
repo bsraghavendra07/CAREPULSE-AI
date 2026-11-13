@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { registerStaffAccount } from '../lib/api';
+import { registerWithEmail } from '../lib/firebase';
 import {
   Stethoscope,
   Eye,
@@ -99,16 +100,49 @@ export function LoginPage() {
 
     setCreateLoading(true);
     try {
-      // 1. Create account with short details
-      await registerStaffAccount({
-        full_name: trimmedName,
-        email: trimmedEmail,
-        password: password,
-        role: role,
-        hospital_name: 'CarePulse Medical Center',
-      });
+      // 1. Create account directly in Firebase Authentication & Cloud Firestore
+      try {
+        await registerWithEmail(trimmedEmail, password, trimmedName, {
+          role: role,
+          hospital_name: 'CarePulse Medical Center',
+          full_name: trimmedName,
+        });
+      } catch (fbErr: any) {
+        console.error('Firebase registration error:', fbErr);
+        if (fbErr?.code === 'auth/email-already-in-use') {
+          setFormValidationMsg('This email is already registered in Firebase. Please switch to Log In.');
+          setCreateLoading(false);
+          return;
+        } else if (fbErr?.code === 'auth/weak-password') {
+          setFormValidationMsg('Password is too weak. Please use at least 6 characters.');
+          setCreateLoading(false);
+          return;
+        } else if (fbErr?.code === 'auth/invalid-email') {
+          setFormValidationMsg('Please enter a valid email address.');
+          setCreateLoading(false);
+          return;
+        } else if (fbErr?.code === 'auth/operation-not-allowed') {
+          setFormValidationMsg('Email/Password provider is not enabled in Firebase Console. Please go to Authentication > Sign-in method and enable Email/Password.');
+          setCreateLoading(false);
+          return;
+        }
+        throw fbErr;
+      }
 
-      // 2. Automatically log in the user immediately
+      // 2. Also record in local hospital backend registry
+      try {
+        await registerStaffAccount({
+          full_name: trimmedName,
+          email: trimmedEmail,
+          password: password,
+          role: role,
+          hospital_name: 'CarePulse Medical Center',
+        });
+      } catch (apiErr) {
+        // Safe to proceed if local backend mirroring is offline
+      }
+
+      // 3. Automatically log in the user with Firebase and navigate to dashboard
       await login(trimmedEmail, password, true);
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
