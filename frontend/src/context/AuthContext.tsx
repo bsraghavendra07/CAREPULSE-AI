@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   auth,
   loginWithEmail,
+  registerWithEmail,
   logoutUser,
   requestPasswordReset,
   onAuthStateChanged,
@@ -83,18 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 1. Check local storage for persistent staff session
-    const localStaffSession = localStorage.getItem('carepulse_staff_session');
-    if (localStaffSession) {
-      try {
-        const parsed = JSON.parse(localStaffSession);
-        setStaff(parsed);
-      } catch (e) {
-        localStorage.removeItem('carepulse_staff_session');
-      }
-    }
-
-    // 2. Check local storage for persistent patient session
+    // 1. Check local storage for persistent patient session
     const localPatientSession = localStorage.getItem('carepulse_patient_session');
     if (localPatientSession) {
       try {
@@ -105,17 +95,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // 2. Strict Firebase Authentication listener - single source of truth
     try {
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         setUser(currentUser);
         if (currentUser) {
           const profile = extractStaffFromUser(currentUser);
-          if (!staff) {
-            setStaff(profile);
-            if (profile) {
-              localStorage.setItem('carepulse_staff_session', JSON.stringify(profile));
-            }
+          setStaff(profile);
+          if (profile) {
+            localStorage.setItem('carepulse_staff_session', JSON.stringify(profile));
           }
+        } else {
+          // If Firebase says not signed in, purge unverified staff session
+          setStaff(null);
+          localStorage.removeItem('carepulse_staff_session');
         }
         setLoading(false);
       });
@@ -130,8 +123,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
 
     try {
-      // 1. STRICT Firebase Authentication verification (must exist in Firebase)
-      const userCredential = await loginWithEmail(email, pass, rememberMe);
+      let userCredential;
+      try {
+        // 1. Attempt Firebase Authentication Sign In
+        userCredential = await loginWithEmail(email, pass, rememberMe);
+      } catch (fbLoginErr: any) {
+        console.warn('Firebase login attempt code:', fbLoginErr?.code);
+        // If user does not exist in Firebase yet, auto-provision and save to Firebase Authentication
+        // so it appears immediately in Firebase Console -> Authentication -> Users
+        if (
+          fbLoginErr?.code === 'auth/user-not-found' ||
+          fbLoginErr?.code === 'auth/invalid-credential'
+        ) {
+          try {
+            const rawName = email.split('@')[0].replace(/[._-]/g, ' ');
+            const formattedName = rawName.toLowerCase().startsWith('dr')
+              ? rawName
+              : `Dr. ${rawName.charAt(0).toUpperCase() + rawName.slice(1)}`;
+            let detectedRole = 'DOCTOR';
+            if (email.toLowerCase().includes('admin')) detectedRole = 'HOSPITAL_ADMIN';
+            else if (email.toLowerCase().includes('nurse')) detectedRole = 'NURSE';
+
+            userCredential = await registerWithEmail(email, pass, formattedName, {
+              role: detectedRole,
+              hospital_name: 'CarePulse Medical Center',
+            });
+          } catch (createErr: any) {
+            if (createErr?.code === 'auth/email-already-in-use') {
+              throw new Error('Invalid email or password for registered Firebase account.');
+            }
+            if (createErr?.code === 'auth/weak-password') {
+              throw new Error('Password must be at least 6 characters.');
+            }
+            throw fbLoginErr;
+          }
+        } else {
+          throw fbLoginErr;
+        }
+      }
+
       if (!userCredential || !userCredential.user) {
         throw new Error('Firebase authentication failed. No user found.');
       }
@@ -184,16 +214,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('carepulse_staff_session', JSON.stringify(profile));
       }
     } catch (err: any) {
-      console.error('Firebase Login failed:', err);
+      console.error('Firebase Auth operation failed:', err);
       let message = 'Unable to sign in. Please verify your credentials.';
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
         message = 'Invalid email or password.';
-      } else if (err.code === 'auth/user-not-found') {
-        message = 'No account found with this email in Firebase. Please click "Create Account" below to register.';
       } else if (err.code === 'auth/too-many-requests') {
         message = 'Access temporarily locked due to multiple failed attempts. Try again in a few minutes.';
-      } else if (err.message && err.message.includes('administrator approval')) {
-        message = err.message;
+      } else if (err.code === 'auth/operation-not-allowed') {
+        message = 'Email/Password sign-in is disabled in Firebase Console. Please go to Authentication > Sign-in method and enable Email/Password.';
       } else if (err.message) {
         message = err.message;
       }

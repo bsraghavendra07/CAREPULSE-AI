@@ -202,11 +202,45 @@ export function LoginPage() {
             </div>
 
             {/* Page Title & Subtitle */}
-            <div className="mt-7 mb-6">
-              <h1 className="text-2xl sm:text-3xl font-bold text-[#1e293b] tracking-tight">
-                {mode === 'login' ? 'Login' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
-              </h1>
-              <p className="text-xs sm:text-sm text-[#64748B] mt-1 font-medium">
+            <div className="mt-6 mb-4">
+              <div className="flex items-center justify-between">
+                <h1 className="text-2xl sm:text-3xl font-bold text-[#1e293b] tracking-tight">
+                  {mode === 'login' ? 'Login' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
+                </h1>
+                <div className="flex items-center space-x-1.5 bg-[#F1F5F9] p-1 rounded-full text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      clearError();
+                      setFormValidationMsg(null);
+                    }}
+                    className={`px-3 py-1 rounded-full transition-all ${
+                      mode === 'login'
+                        ? 'bg-white text-[#1e293b] shadow-xs'
+                        : 'text-[#64748B] hover:text-[#1e293b]'
+                    }`}
+                  >
+                    Log In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signup');
+                      clearError();
+                      setFormValidationMsg(null);
+                    }}
+                    className={`px-3 py-1 rounded-full transition-all ${
+                      mode === 'signup'
+                        ? 'bg-white text-[#1e293b] shadow-xs'
+                        : 'text-[#64748B] hover:text-[#1e293b]'
+                    }`}
+                  >
+                    Sign Up
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs sm:text-sm text-[#64748B] mt-1.5 font-medium">
                 {mode === 'login'
                   ? 'Log in to care account'
                   : mode === 'signup'
