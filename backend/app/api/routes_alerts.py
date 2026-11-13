@@ -17,6 +17,7 @@ from app.core.specialist_router import (
     categorize_patient,
     route_clinical_alert,
 )
+from app.fhir.escalation import create_fhir_communication_request, create_fhir_flag
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
@@ -100,6 +101,46 @@ async def resolve_alert(
     if not updated:
         raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found")
     return updated
+
+
+class EscalateAlertRequest(BaseModel):
+    alert_id: str
+    patient_id: str
+    patient_name: Optional[str] = "Patient"
+    alert_level: str  # WATCH, REVIEW, URGENT
+    alert_title: str
+    reading: str
+    rule: str
+    patient_fact: str
+    language: Optional[str] = "en"  # "en", "kn", "hi"
+
+
+@router.post("/escalate")
+async def escalate_alert(body: EscalateAlertRequest) -> Dict[str, Any]:
+    """Escalate a clinical alert to the healthcare team via FHIR CommunicationRequest and Flag in EN/KN/HI."""
+    comm_req = create_fhir_communication_request(
+        patient_id=body.patient_id,
+        patient_name=body.patient_name or body.patient_id,
+        alert_level=body.alert_level,
+        alert_title=body.alert_title,
+        reading=body.reading,
+        rule=body.rule,
+        patient_fact=body.patient_fact,
+        language=body.language or "en",
+    )
+    flag = create_fhir_flag(
+        patient_id=body.patient_id,
+        patient_name=body.patient_name or body.patient_id,
+        alert_level=body.alert_level,
+        alert_title=body.alert_title,
+    )
+    return {
+        "status": "escalated",
+        "language": body.language or "en",
+        "communication_request": comm_req,
+        "flag": flag,
+        "message": f"Escalation successfully generated via FHIR for {body.patient_id} ({body.language})",
+    }
 
 
 @router.post("/route-test", response_model=RoutedAlert)

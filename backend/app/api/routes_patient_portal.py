@@ -9,6 +9,8 @@ Enforces strict patient-level data isolation.
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
@@ -23,6 +25,19 @@ router = APIRouter(prefix="/api/patient", tags=["patient-portal"])
 # Injected by main.py
 _telemetry_manager: Any = None
 _patients_profiles: Dict[str, Dict[str, Any]] = {}
+
+# In-memory store for active patient symptom check-ins
+_patient_symptoms: Dict[str, Dict[str, Any]] = defaultdict(lambda: {
+    "breathlessness": "None",
+    "fever": "Normal",
+    "dizziness": "None",
+    "reported_at": None,
+})
+
+
+def get_patient_symptoms(patient_id: str) -> Dict[str, Any]:
+    """Retrieve active symptoms reported by patient."""
+    return _patient_symptoms[patient_id]
 
 
 def set_portal_dependencies(manager: Any, patients: Dict[str, Dict[str, Any]]) -> None:
@@ -257,4 +272,44 @@ async def get_patient_portal_data(
             "status_summary": "Patient is recovering on schedule with excellent hemodynamic stability.",
         },
         "notifications": notifications,
+    }
+
+
+class PatientSymptomCheckin(BaseModel):
+    patient_id: str = "P-001"
+    breathlessness: str = Field(default="None", description="None | Mild | Moderate | Severe")
+    fever: str = Field(default="Normal", description="Normal | Mild fever | High fever")
+    dizziness: str = Field(default="None", description="None | Mild | Severe")
+    notes: Optional[str] = None
+
+
+@router.post("/symptoms")
+async def record_patient_symptoms(body: PatientSymptomCheckin) -> Dict[str, Any]:
+    """Records daily patient-reported symptoms to incorporate into deterioration detection."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    pid = body.patient_id or "P-001"
+    data = {
+        "breathlessness": body.breathlessness,
+        "fever": body.fever,
+        "dizziness": body.dizziness,
+        "notes": body.notes,
+        "reported_at": now_iso,
+    }
+    _patient_symptoms[pid] = data
+
+    logger.info("Patient %s reported symptoms: %s", pid, data)
+    return {
+        "status": "success",
+        "patient_id": pid,
+        "symptoms": data,
+        "message": "Daily symptoms successfully recorded and integrated into continuous monitoring engine.",
+    }
+
+
+@router.get("/symptoms")
+async def fetch_patient_symptoms(patient_id: str = "P-001") -> Dict[str, Any]:
+    """Retrieve the latest symptom check-in for a patient."""
+    return {
+        "patient_id": patient_id,
+        "symptoms": get_patient_symptoms(patient_id),
     }

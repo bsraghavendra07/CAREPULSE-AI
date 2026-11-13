@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { fetchPatientPortalData } from '../lib/api';
+import { fetchPatientPortalData, recordPatientSymptoms, fetchPatientSymptoms } from '../lib/api';
 import {
   Heart,
   Activity,
@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   RefreshCw,
   FileText,
+  ClipboardList,
 } from 'lucide-react';
 import { CarePulseLogo } from '../components/brand/CarePulseLogo';
 
@@ -31,16 +32,56 @@ export function PatientDashboardPage() {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Daily Symptom Check-in State
+  const [breathlessness, setBreathlessness] = useState<'None' | 'Mild' | 'Moderate' | 'Severe'>('None');
+  const [fever, setFever] = useState<'Normal' | 'Mild fever' | 'High fever'>('Normal');
+  const [dizziness, setDizziness] = useState<'None' | 'Mild' | 'Severe'>('None');
+  const [symptomNotes, setSymptomNotes] = useState<string>('');
+  const [submittingSymptoms, setSubmittingSymptoms] = useState(false);
+  const [symptomMessage, setSymptomMessage] = useState<string | null>(null);
+
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
       const portalData = await fetchPatientPortalData();
       setData(portalData);
+      const pid = portalData?.personal_profile?.patient_id || patient?.patient_id || 'P-001';
+      try {
+        const sym = await fetchPatientSymptoms(pid);
+        if (sym?.symptoms) {
+          if (sym.symptoms.breathlessness) setBreathlessness(sym.symptoms.breathlessness as any);
+          if (sym.symptoms.fever) setFever(sym.symptoms.fever as any);
+          if (sym.symptoms.dizziness) setDizziness(sym.symptoms.dizziness as any);
+          if (sym.symptoms.notes) setSymptomNotes(sym.symptoms.notes);
+        }
+      } catch {}
     } catch (err: any) {
       setError(err.message || 'Could not load patient clinical telemetry.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSymptomSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingSymptoms(true);
+    setSymptomMessage(null);
+    try {
+      const pid = profile.id || profile.patient_id || patient?.patient_id || 'P-001';
+      await recordPatientSymptoms({
+        patient_id: pid,
+        breathlessness,
+        fever,
+        dizziness,
+        notes: symptomNotes,
+      });
+      setSymptomMessage('Daily symptom check-in recorded and synced with your clinical monitoring score!');
+      setTimeout(() => setSymptomMessage(null), 5000);
+    } catch (err: any) {
+      setSymptomMessage(`Error: ${err.message || 'Failed to submit check-in'}`);
+    } finally {
+      setSubmittingSymptoms(false);
     }
   };
 
@@ -195,6 +236,135 @@ export function PatientDashboardPage() {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* ── Daily Symptom Check-in (Requirement 5) ── */}
+        <div className="bg-white rounded-3xl border border-[#CCFBF1] p-6 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E2E8F0] pb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="p-2 rounded-xl bg-[#E6F7F5] text-[#067A6E]">
+                <ClipboardList className="h-5 w-5 text-[#00A896]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-black text-[#131E3A] tracking-tight">Daily Symptom Check-in</h2>
+                <p className="text-xs text-[#64748B]">
+                  Your reported symptoms are factored into your real-time risk score to detect deterioration early.
+                </p>
+              </div>
+            </div>
+            {symptomMessage && (
+              <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold animate-in fade-in">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <span>{symptomMessage}</span>
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={handleSymptomSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Breathlessness */}
+              <div className="bg-[#F4FBF9] p-4 rounded-2xl border border-[#CCFBF1] space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#131E3A]">Breathlessness / Shortness of Breath</label>
+                  <Wind className="h-4 w-4 text-[#00A896]" />
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(['None', 'Mild', 'Moderate', 'Severe'] as const).map((lvl) => (
+                    <button
+                      type="button"
+                      key={lvl}
+                      onClick={() => setBreathlessness(lvl)}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                        breathlessness === lvl
+                          ? lvl === 'Severe'
+                            ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-xs'
+                            : lvl === 'Moderate'
+                            ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-xs'
+                            : 'bg-[#E6F7F5] border-[#00A896] text-[#067A6E] shadow-xs'
+                          : 'bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#B2EBE4]'
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Fever */}
+              <div className="bg-[#F4FBF9] p-4 rounded-2xl border border-[#CCFBF1] space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#131E3A]">Fever / Body Temperature</label>
+                  <Thermometer className="h-4 w-4 text-orange-500" />
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(['Normal', 'Mild fever', 'High fever'] as const).map((lvl) => (
+                    <button
+                      type="button"
+                      key={lvl}
+                      onClick={() => setFever(lvl)}
+                      className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                        fever === lvl
+                          ? lvl === 'High fever'
+                            ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-xs'
+                            : lvl === 'Mild fever'
+                            ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-xs'
+                            : 'bg-[#E6F7F5] border-[#00A896] text-[#067A6E] shadow-xs'
+                          : 'bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#B2EBE4]'
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dizziness */}
+              <div className="bg-[#F4FBF9] p-4 rounded-2xl border border-[#CCFBF1] space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#131E3A]">Dizziness / Lightheadedness</label>
+                  <Activity className="h-4 w-4 text-indigo-500" />
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(['None', 'Mild', 'Severe'] as const).map((lvl) => (
+                    <button
+                      type="button"
+                      key={lvl}
+                      onClick={() => setDizziness(lvl)}
+                      className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                        dizziness === lvl
+                          ? lvl === 'Severe'
+                            ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-xs'
+                            : lvl === 'Mild'
+                            ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-xs'
+                            : 'bg-[#E6F7F5] border-[#00A896] text-[#067A6E] shadow-xs'
+                          : 'bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#B2EBE4]'
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+              <input
+                type="text"
+                value={symptomNotes}
+                onChange={(e) => setSymptomNotes(e.target.value)}
+                placeholder="Optional notes for your care team (e.g. chest tightness after stairs)..."
+                className="w-full sm:flex-1 text-xs rounded-xl border border-[#E2E8F0] px-3.5 py-2.5 text-[#131E3A] placeholder-[#94A3B8] focus:outline-none focus:border-[#00A896]"
+              />
+              <button
+                type="submit"
+                disabled={submittingSymptoms}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-gradient-to-r from-[#00D2C4] to-[#00A896] hover:from-[#00B4A0] hover:to-[#067A6E] text-white text-xs font-bold shadow-[0_4px_14px_0_rgba(0,168,150,0.35)] transition-all flex items-center justify-center space-x-2 shrink-0"
+              >
+                <span>{submittingSymptoms ? 'Recording...' : 'Submit Daily Check-in'}</span>
+                <span>&rarr;</span>
+              </button>
+            </div>
+          </form>
         </div>
 
         {/* 1. CURRENT LIVE VITAL SIGNS */}

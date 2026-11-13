@@ -617,5 +617,67 @@ export async function fetchCdsAlerts(patientId?: string): Promise<CDSAlert[]> {
   return res.json();
 }
 
+export interface PatientSymptomsPayload {
+  patient_id: string;
+  breathlessness: string;
+  fever: string;
+  dizziness: string;
+  notes?: string;
+}
+
+export async function recordPatientSymptoms(payload: PatientSymptomsPayload): Promise<any> {
+  const res = await fetch(`${API_BASE}/patient/symptoms`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to record symptoms: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchPatientSymptoms(patientId: string = 'P-001'): Promise<{
+  patient_id: string;
+  symptoms: {
+    breathlessness: string;
+    fever: string;
+    dizziness: string;
+    notes?: string;
+    reported_at?: string;
+  };
+}> {
+  const res = await fetch(`${API_BASE}/patient/symptoms?patient_id=${patientId}`);
+  if (!res.ok) throw new Error(`Failed to fetch symptoms: ${res.statusText}`);
+  return res.json();
+}
+
+export interface EscalateAlertPayload {
+  alert_id: string;
+  patient_id: string;
+  patient_name?: string;
+  alert_level: string;
+  alert_title: string;
+  reading: string;
+  rule: string;
+  patient_fact: string;
+  language: 'en' | 'kn' | 'hi';
+}
+
+export async function escalateClinicalAlert(payload: EscalateAlertPayload): Promise<{
+  status: string;
+  language: string;
+  communication_request: any;
+  flag: any;
+  message: string;
+}> {
+  const res = await fetch(`${API_BASE}/alerts/escalate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to escalate alert: ${res.statusText}`);
+  return res.json();
+}
+
+
 
 

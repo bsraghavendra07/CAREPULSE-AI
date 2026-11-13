@@ -899,3 +899,4 @@ def load_all_synthea_patients(synthea_dir: Path | str) -> dict[str, dict[str, An
             logger.warning("Failed parsing Synthea file %s: %s", f, exc)
 
     return patients
+

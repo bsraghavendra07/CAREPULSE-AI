@@ -182,31 +182,28 @@ export function PatientsPage({
           <div className="flex items-center space-x-1 bg-[#EFECE4] border border-[#E8E4DA] p-1 rounded-full text-xs shadow-sm">
             <button
               onClick={() => setFilterCondition('all')}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-                filterCondition === 'all'
-                  ? 'bg-[#111111] text-white shadow-sm'
-                  : 'text-[#6B7280] hover:text-[#111827]'
-              }`}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${filterCondition === 'all'
+                ? 'bg-[#111111] text-white shadow-sm'
+                : 'text-[#6B7280] hover:text-[#111827]'
+                }`}
             >
               All (5)
             </button>
             <button
               onClick={() => setFilterCondition('scale2')}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-                filterCondition === 'scale2'
-                  ? 'bg-[#111111] text-white shadow-sm'
-                  : 'text-[#6B7280] hover:text-[#111827]'
-              }`}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${filterCondition === 'scale2'
+                ? 'bg-[#111111] text-white shadow-sm'
+                : 'text-[#6B7280] hover:text-[#111827]'
+                }`}
             >
               Scale 2 (COPD)
             </button>
             <button
               onClick={() => setFilterCondition('cardiac')}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-                filterCondition === 'cardiac'
-                  ? 'bg-[#111111] text-white shadow-sm'
-                  : 'text-[#6B7280] hover:text-[#111827]'
-              }`}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${filterCondition === 'cardiac'
+                ? 'bg-[#111111] text-white shadow-sm'
+                : 'text-[#6B7280] hover:text-[#111827]'
+                }`}
             >
               Cardiac
             </button>
