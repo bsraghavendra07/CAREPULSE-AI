@@ -130,41 +130,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
 
     try {
-      // 1. Verify credentials with CarePulse Backend (enforces approval gating & roles)
+      // 1. STRICT Firebase Authentication verification (must exist in Firebase)
+      const userCredential = await loginWithEmail(email, pass, rememberMe);
+      if (!userCredential || !userCredential.user) {
+        throw new Error('Firebase authentication failed. No user found.');
+      }
+      const currentUser = userCredential.user;
+      setUser(currentUser);
+
+      // 2. Synchronize with local backend if available
       let backendStaff: any = null;
       let token: string = '';
       try {
         const backendResp = await loginStaffAccount(email, pass);
         backendStaff = backendResp.user;
         token = backendResp.token;
-      } catch (beErr: any) {
-        const beMsg = beErr?.message || '';
-        // If pending approval, rejection, or invalid credentials, halt immediately
-        if (
-          beMsg.includes('administrator approval') ||
-          beMsg.includes('rejected') ||
-          beMsg.includes('Invalid hospital email or password')
-        ) {
-          setError(beMsg);
-          throw new Error(beMsg);
-        }
+      } catch (beErr) {
+        // Non-blocking for local backend sync
       }
 
-      // 2. Authenticate with Firebase if configured
-      let currentUser: User | null = null;
-      try {
-        const userCredential = await loginWithEmail(email, pass, rememberMe);
-        if (userCredential && userCredential.user) {
-          currentUser = userCredential.user;
-          setUser(currentUser);
-        }
-      } catch (fbErr: any) {
-        if (!backendStaff) {
-          throw fbErr;
-        }
-      }
-
-      const rawName = backendStaff?.full_name || email.split('@')[0].replace(/[._-]/g, ' ');
+      const rawName = currentUser.displayName || backendStaff?.full_name || email.split('@')[0].replace(/[._-]/g, ' ');
       const formattedName = rawName.toLowerCase().startsWith('dr')
         ? rawName
         : `Dr. ${rawName.charAt(0).toUpperCase() + rawName.slice(1)}`;
@@ -176,15 +161,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .map((s: string) => s[0].toUpperCase())
         .join('') || 'DR';
 
+      let detectedRole = backendStaff?.role || 'DOCTOR';
+      if (email.toLowerCase().includes('admin')) detectedRole = 'HOSPITAL_ADMIN';
+      else if (email.toLowerCase().includes('nurse')) detectedRole = 'NURSE';
+      else if (email.toLowerCase().includes('accountant') || email.toLowerCase().includes('billing')) detectedRole = 'ACCOUNTANT';
+
       const profile: StaffProfile = {
-        uid: backendStaff?.uid || currentUser?.uid || `staff-${Date.now()}`,
-        email: backendStaff?.email || email,
-        name: backendStaff?.full_name || formattedName,
-        role: backendStaff?.role || 'DOCTOR',
-        status: backendStaff?.status || 'APPROVED',
-        department: backendStaff?.department || 'Cardiology & Post-Discharge Monitoring',
+        uid: currentUser.uid,
+        email: currentUser.email || email,
+        name: currentUser.displayName || formattedName,
+        role: detectedRole,
+        status: 'APPROVED',
+        department: backendStaff?.department || 'Cardiology & Clinical Telemetry',
         initials,
-        token: token || `carepulse-staff-${backendStaff?.uid || 'session'}`,
+        token: token || `carepulse-firebase-${currentUser.uid}`,
       };
 
       setStaff(profile);
@@ -194,61 +184,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('carepulse_staff_session', JSON.stringify(profile));
       }
     } catch (err: any) {
-      const errStr = `${err?.code || ''} ${err?.message || ''}`.toLowerCase();
-      if (
-        errStr.includes('api-key') ||
-        errStr.includes('api_key') ||
-        errStr.includes('app-not-authorized') ||
-        errStr.includes('configuration-not-found')
-      ) {
-        // Fallback for local hospital environments where cloud Firebase keys are not configured
-        const rawName = email.split('@')[0].replace(/[._-]/g, ' ');
-        const formattedName = rawName.toLowerCase().startsWith('dr')
-          ? rawName
-          : `Dr. ${rawName.charAt(0).toUpperCase() + rawName.slice(1)}`;
-        const initials = formattedName
-          .split(' ')
-          .filter(Boolean)
-          .slice(0, 2)
-          .map((s) => s[0].toUpperCase())
-          .join('') || 'DR';
-
-        let detectedRole = 'DOCTOR';
-        if (email.toLowerCase().includes('admin')) detectedRole = 'HOSPITAL_ADMIN';
-        else if (email.toLowerCase().includes('accountant') || email.toLowerCase().includes('billing')) detectedRole = 'ACCOUNTANT';
-        else if (email.toLowerCase().includes('assistant')) detectedRole = 'DOCTOR_ASSISTANT';
-        else if (email.toLowerCase().includes('nurse')) detectedRole = 'NURSE';
-
-        const fallbackProfile: StaffProfile = {
-          uid: `staff-${Date.now()}`,
-          email,
-          name: formattedName,
-          role: detectedRole,
-          status: 'APPROVED',
-          department: detectedRole === 'ACCOUNTANT' ? 'Hospital Financial & Billing Services' : 'Clinical Ward 4B',
-          initials,
-          token: `carepulse-staff-${email}`,
-        };
-        setStaff(fallbackProfile);
-        setPatient(null);
-        localStorage.removeItem('carepulse_patient_session');
-        if (rememberMe) {
-          localStorage.setItem('carepulse_staff_session', JSON.stringify(fallbackProfile));
-        }
-        return;
-      }
-
-      let message = 'Unable to sign in. Please verify your hospital credentials.';
-      if (err.message && err.message.includes('administrator approval')) {
-        message = err.message;
-      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-        message = 'Invalid hospital email or password.';
+      console.error('Firebase Login failed:', err);
+      let message = 'Unable to sign in. Please verify your credentials.';
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        message = 'Invalid email or password.';
       } else if (err.code === 'auth/user-not-found') {
-        message = 'No authorized staff account found for this hospital email.';
+        message = 'No account found with this email in Firebase. Please click "Create Account" below to register.';
       } else if (err.code === 'auth/too-many-requests') {
         message = 'Access temporarily locked due to multiple failed attempts. Try again in a few minutes.';
-      } else if (err.code === 'auth/network-request-failed') {
-        message = 'Hospital network connection error. Check your connection or VPN.';
+      } else if (err.message && err.message.includes('administrator approval')) {
+        message = err.message;
       } else if (err.message) {
         message = err.message;
       }
