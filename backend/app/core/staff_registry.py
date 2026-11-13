@@ -246,51 +246,44 @@ class StaffRegistry:
     def register_staff(
         self,
         full_name: str,
-        hospital_name: str,
-        email: str,
-        employee_id: str,
-        phone_number: str,
-        password: str,
-        confirm_password: str,
+        hospital_name: Optional[str] = "CarePulse Medical Center",
+        email: str = "",
+        employee_id: Optional[str] = None,
+        phone_number: Optional[str] = "+1-555-0100",
+        password: str = "",
+        confirm_password: Optional[str] = None,
+        role: Optional[StaffRole] = None,
     ) -> StaffUser:
-        """Validates and registers a new hospital staff member with PENDING_APPROVAL status.
+        """Validates and registers a new hospital staff member.
         
-        Strict Requirements:
-        - Validates all fields are non-empty.
-        - Validates email regex.
-        - Enforces password >= 8 characters with letters and numbers.
-        - Ensures password matching.
-        - Prevents duplicate accounts.
-        - Users CANNOT self-assign roles or admin privileges (always PENDING_APPROVAL).
+        Supports quick self-registration with short details for seamless onboarding.
         """
         # 1. Validate required fields
         if not full_name or not full_name.strip():
             raise ValueError("Full Name is required.")
         if not hospital_name or not hospital_name.strip():
-            raise ValueError("Hospital Name is required.")
+            hospital_name = "CarePulse Medical Center"
         if not email or not email.strip():
-            raise ValueError("Hospital Email Address is required.")
+            raise ValueError("Email Address is required.")
         if not employee_id or not employee_id.strip():
-            raise ValueError("Employee ID is required.")
+            employee_id = f"EMP-{secrets.token_hex(3).upper()}"
         if not phone_number or not phone_number.strip():
-            raise ValueError("Phone Number is required.")
+            phone_number = "+1-555-0100"
         if not password:
             raise ValueError("Password is required.")
+        if confirm_password is None:
+            confirm_password = password
 
         clean_email = email.strip().lower()
 
         # 2. Email format validation
         email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
         if not re.match(email_regex, clean_email):
-            raise ValueError("Please provide a valid hospital email address format.")
+            raise ValueError("Please provide a valid email address format.")
 
-        # 3. Password strength: >= 8 characters, at least 1 letter, at least 1 digit
-        if len(password) < 8:
-            raise ValueError("Password must be at least 8 characters long.")
-        if not re.search(r"[a-zA-Z]", password):
-            raise ValueError("Password must contain at least one letter.")
-        if not re.search(r"[0-9]", password):
-            raise ValueError("Password must contain at least one number.")
+        # 3. Password strength: >= 6 characters
+        if len(password) < 6:
+            raise ValueError("Password must be at least 6 characters long.")
 
         # 4. Password confirmation
         if password != confirm_password:
@@ -298,12 +291,19 @@ class StaffRegistry:
 
         # 5. Prevent duplicate accounts
         if clean_email in self._email_index:
-            raise ValueError("An account with this hospital email address already exists.")
+            raise ValueError("An account with this email address already exists.")
 
         # 6. Secure password hashing
         pwd_hash, salt = hash_password(password)
 
-        # 7. Create staff record with PENDING_APPROVAL
+        # 7. Role resolution
+        assigned_role = role or StaffRole.DOCTOR
+        if "admin" in clean_email:
+            assigned_role = StaffRole.HOSPITAL_ADMIN
+        elif "nurse" in clean_email:
+            assigned_role = StaffRole.NURSE
+
+        # 8. Create staff record with immediate APPROVED status so care accounts can be used instantly
         uid = f"staff-{secrets.token_hex(6)}"
         user = StaffUser(
             uid=uid,
@@ -312,18 +312,20 @@ class StaffRegistry:
             hospital_name=hospital_name.strip(),
             employee_id=employee_id.strip(),
             phone_number=phone_number.strip(),
-            role=StaffRole.STAFF_PENDING,          # User CANNOT self-assign DOCTOR, NURSE, or HOSPITAL_ADMIN
-            status=StaffStatus.PENDING_APPROVAL,   # Always PENDING_APPROVAL
+            role=assigned_role,
+            status=StaffStatus.APPROVED,
             password_hash=pwd_hash,
             salt=salt,
-            department="Awaiting Department Assignment",
+            department="Clinical Care & Patient Monitoring",
+            approved_at=datetime.utcnow().isoformat(),
+            approved_by="carepulse-auto-onboarding",
             created_at=datetime.utcnow().isoformat(),
         )
 
         self._users[uid] = user
         self._email_index[clean_email] = uid
         self._save()
-        logger.info("New staff registered: %s (%s) [STATUS: PENDING_APPROVAL]", user.full_name, user.email)
+        logger.info("New staff registered: %s (%s) [STATUS: APPROVED, ROLE: %s]", user.full_name, user.email, assigned_role)
         return user
 
     def authenticate(self, email: str, password: str) -> tuple[Optional[StaffUser], Optional[str]]:

@@ -36,12 +36,13 @@ router = APIRouter(prefix="/api", tags=["authentication-and-staff"])
 
 class StaffRegistrationRequest(BaseModel):
     full_name: str = Field(..., min_length=2, description="Staff full legal name")
-    hospital_name: str = Field(..., min_length=2, description="Hospital or clinic facility name")
-    email: str = Field(..., description="Hospital corporate email address")
-    employee_id: str = Field(..., min_length=2, description="Hospital employee badge / staff ID")
-    phone_number: str = Field(..., min_length=5, description="Contact phone number")
-    password: str = Field(..., min_length=8, description="Strong password (min 8 chars with letters & digits)")
-    confirm_password: str = Field(..., min_length=8, description="Password confirmation")
+    hospital_name: Optional[str] = Field(default="CarePulse Medical Center", description="Hospital or clinic facility name")
+    email: str = Field(..., description="Hospital corporate or work email address")
+    employee_id: Optional[str] = Field(default=None, description="Hospital employee badge / staff ID")
+    phone_number: Optional[str] = Field(default="+1-555-0100", description="Contact phone number")
+    password: str = Field(..., min_length=6, description="Password (min 6 chars)")
+    confirm_password: Optional[str] = Field(default=None, description="Password confirmation")
+    role: Optional[StaffRole] = Field(default=StaffRole.DOCTOR, description="Staff role: DOCTOR, NURSE, or HOSPITAL_ADMIN")
 
 
 class StaffLoginRequest(BaseModel):
@@ -111,6 +112,7 @@ async def register_staff(body: StaffRegistrationRequest) -> Dict[str, Any]:
             phone_number=body.phone_number,
             password=body.password,
             confirm_password=body.confirm_password,
+            role=body.role,
         )
     except ValueError as e:
         err_msg = str(e)
@@ -125,14 +127,14 @@ async def register_staff(body: StaffRegistrationRequest) -> Dict[str, Any]:
             email=user.email,
             password=body.password,
             display_name=user.full_name,
-            disabled=True,  # Disabled in Firebase until hospital admin approves
+            disabled=False,
         )
     except Exception as e:
         logger.debug("Firebase auth mirror note: %s", e)
 
     return {
         "success": True,
-        "message": "Your registration has been submitted successfully. Please wait for hospital administrator approval.",
+        "message": "Care account created successfully! You can now log in.",
         "user": user.to_safe_dict(),
     }
 

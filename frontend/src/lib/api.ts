@@ -280,12 +280,13 @@ export async function resolveAlert(alertId: string, clinicianName: string = 'Dr.
 
 export interface StaffRegistrationData {
   full_name: string;
-  hospital_name: string;
   email: string;
-  employee_id: string;
-  phone_number: string;
   password: string;
-  confirm_password: string;
+  hospital_name?: string;
+  employee_id?: string;
+  phone_number?: string;
+  confirm_password?: string;
+  role?: string;
 }
 
 export interface StaffUserRecord {

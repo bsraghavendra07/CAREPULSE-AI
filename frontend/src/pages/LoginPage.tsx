@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { registerStaffAccount } from '../lib/api';
 import {
   Stethoscope,
   Eye,
@@ -18,20 +19,27 @@ export function LoginPage() {
 
   const registeredMsg = (location.state as any)?.message;
 
-  // Form State
+  // Mode: 'login' | 'signup' | 'forgot'
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
+
+  // Login Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
+  // Short Create Account State
+  const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState<'DOCTOR' | 'NURSE' | 'HOSPITAL_ADMIN'>('DOCTOR');
+  const [createLoading, setCreateLoading] = useState(false);
+
   // Forgot Password State
-  const [isForgotMode, setIsForgotMode] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [formValidationMsg, setFormValidationMsg] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
     setFormValidationMsg(null);
@@ -65,6 +73,48 @@ export function LoginPage() {
       }
     } catch {
       // Error message handled by AuthContext error state
+    }
+  };
+
+  const handleSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearError();
+    setFormValidationMsg(null);
+
+    const trimmedName = fullName.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName || trimmedName.length < 2) {
+      setFormValidationMsg('Please enter your full name.');
+      return;
+    }
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setFormValidationMsg('Please enter a valid work email format.');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setFormValidationMsg('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setCreateLoading(true);
+    try {
+      // 1. Create account with short details
+      await registerStaffAccount({
+        full_name: trimmedName,
+        email: trimmedEmail,
+        password: password,
+        role: role,
+        hospital_name: 'CarePulse Medical Center',
+      });
+
+      // 2. Automatically log in the user immediately
+      await login(trimmedEmail, password, true);
+      navigate('/dashboard', { replace: true });
+    } catch (err: any) {
+      setFormValidationMsg(err?.message || 'Failed to create care account. Please try again.');
+    } finally {
+      setCreateLoading(false);
     }
   };
 
@@ -104,7 +154,7 @@ export function LoginPage() {
           />
         </div>
 
-        {/* ──────── RIGHT SIDE – LOGIN FORM ──────── */}
+        {/* ──────── RIGHT SIDE – FORM CONTAINER ──────── */}
         <div className="p-8 sm:p-10 lg:p-12 flex flex-col justify-between bg-white">
           <div>
             {/* CarePulse Logo Header */}
@@ -120,12 +170,14 @@ export function LoginPage() {
             {/* Page Title & Subtitle */}
             <div className="mt-7 mb-6">
               <h1 className="text-2xl sm:text-3xl font-bold text-[#1e293b] tracking-tight">
-                {isForgotMode ? 'Reset Password' : 'Login'}
+                {mode === 'login' ? 'Login' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
               </h1>
               <p className="text-xs sm:text-sm text-[#64748B] mt-1 font-medium">
-                {isForgotMode
-                  ? 'Enter your work email to receive password reset instructions.'
-                  : 'Log in to care account'}
+                {mode === 'login'
+                  ? 'Log in to care account'
+                  : mode === 'signup'
+                  ? 'Register your care account with short details'
+                  : 'Enter your work email to receive password reset instructions.'}
               </p>
             </div>
 
@@ -159,9 +211,9 @@ export function LoginPage() {
               </div>
             )}
 
-            {!isForgotMode ? (
-              /* ── MAIN LOGIN FORM ── */
-              <form onSubmit={handleSubmit} className="space-y-4">
+            {/* ── MODE 1: LOGIN ── */}
+            {mode === 'login' && (
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
                 {/* Email Field */}
                 <div>
                   <label className="block text-xs font-semibold text-[#475569] mb-1.5">
@@ -227,7 +279,7 @@ export function LoginPage() {
                       clearError();
                       setFormValidationMsg(null);
                       setResetEmail(email);
-                      setIsForgotMode(true);
+                      setMode('forgot');
                     }}
                     className="font-medium text-[#2C698D] hover:underline"
                   >
@@ -235,7 +287,7 @@ export function LoginPage() {
                   </button>
                 </div>
 
-                {/* Log In Button (Matches reference slate-blue button) */}
+                {/* Log In Button */}
                 <div className="pt-2">
                   <button
                     type="submit"
@@ -252,9 +304,178 @@ export function LoginPage() {
                     )}
                   </button>
                 </div>
+
+                {/* Don't have an account? Create Account */}
+                <div className="text-center pt-2">
+                  <p className="text-xs text-[#64748B]">
+                    Don't have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('signup');
+                        clearError();
+                        setFormValidationMsg(null);
+                      }}
+                      className="font-semibold text-[#2C698D] hover:underline cursor-pointer"
+                    >
+                      Create Account
+                    </button>
+                  </p>
+                </div>
               </form>
-            ) : (
-              /* ── FORGOT PASSWORD FLOW ── */
+            )}
+
+            {/* ── MODE 2: CREATE ACCOUNT (SIMPLE SHORT DETAILS) ── */}
+            {mode === 'signup' && (
+              <form onSubmit={handleSignupSubmit} className="space-y-3.5">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#475569] mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      if (formValidationMsg) setFormValidationMsg(null);
+                    }}
+                    placeholder="e.g. Dr. Alex Morgan"
+                    required
+                    className="w-full rounded-full border border-[#CBD5E1] bg-white px-5 py-2.5 text-sm text-[#1e293b] placeholder-[#94A3B8] focus:border-[#2C698D] focus:outline-none focus:ring-2 focus:ring-[#2C698D]/20 transition-all shadow-2xs"
+                  />
+                </div>
+
+                {/* Work Email */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#475569] mb-1">
+                    Work Email
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (formValidationMsg) setFormValidationMsg(null);
+                    }}
+                    placeholder="name@hospital.carepulse.org"
+                    required
+                    autoComplete="email"
+                    className="w-full rounded-full border border-[#CBD5E1] bg-white px-5 py-2.5 text-sm text-[#1e293b] placeholder-[#94A3B8] focus:border-[#2C698D] focus:outline-none focus:ring-2 focus:ring-[#2C698D]/20 transition-all shadow-2xs"
+                  />
+                </div>
+
+                {/* Role Pill Selector */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#475569] mb-1">
+                    Role
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRole('DOCTOR')}
+                      className={`py-1.5 px-3 rounded-full text-xs font-semibold border transition-all ${
+                        role === 'DOCTOR'
+                          ? 'bg-[#3B7A9E] text-white border-[#3B7A9E] shadow-2xs'
+                          : 'bg-[#F8FAFC] text-[#64748B] border-[#E2E8F0] hover:bg-[#F1F5F9]'
+                      }`}
+                    >
+                      Doctor
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole('NURSE')}
+                      className={`py-1.5 px-3 rounded-full text-xs font-semibold border transition-all ${
+                        role === 'NURSE'
+                          ? 'bg-[#3B7A9E] text-white border-[#3B7A9E] shadow-2xs'
+                          : 'bg-[#F8FAFC] text-[#64748B] border-[#E2E8F0] hover:bg-[#F1F5F9]'
+                      }`}
+                    >
+                      Nurse
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole('HOSPITAL_ADMIN')}
+                      className={`py-1.5 px-3 rounded-full text-xs font-semibold border transition-all ${
+                        role === 'HOSPITAL_ADMIN'
+                          ? 'bg-[#3B7A9E] text-white border-[#3B7A9E] shadow-2xs'
+                          : 'bg-[#F8FAFC] text-[#64748B] border-[#E2E8F0] hover:bg-[#F1F5F9]'
+                      }`}
+                    >
+                      Admin
+                    </button>
+                  </div>
+                </div>
+
+                {/* Password Field */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#475569] mb-1">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (formValidationMsg) setFormValidationMsg(null);
+                      }}
+                      placeholder="At least 6 characters"
+                      required
+                      autoComplete="new-password"
+                      className="w-full rounded-full border border-[#CBD5E1] bg-white pl-5 pr-12 py-2.5 text-sm text-[#1e293b] placeholder-[#94A3B8] focus:border-[#2C698D] focus:outline-none focus:ring-2 focus:ring-[#2C698D]/20 transition-all shadow-2xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#94A3B8] hover:text-[#475569] transition-colors"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Create Account Button */}
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={createLoading}
+                    className="w-full py-3 px-6 rounded-full bg-[#3B7A9E] hover:bg-[#326989] text-white font-semibold text-sm flex items-center justify-center space-x-2 shadow-[0_4px_14px_rgba(59,122,158,0.35)] transition-all disabled:opacity-50 active:scale-[0.99]"
+                  >
+                    {createLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Creating Account...</span>
+                      </>
+                    ) : (
+                      <span>Create Account</span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Already have an account? Log In */}
+                <div className="text-center pt-2">
+                  <p className="text-xs text-[#64748B]">
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('login');
+                        clearError();
+                        setFormValidationMsg(null);
+                      }}
+                      className="font-semibold text-[#2C698D] hover:underline cursor-pointer"
+                    >
+                      Log In
+                    </button>
+                  </p>
+                </div>
+              </form>
+            )}
+
+            {/* ── MODE 3: FORGOT PASSWORD ── */}
+            {mode === 'forgot' && (
               <div className="space-y-4">
                 {resetSuccess ? (
                   <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-xs text-emerald-900 space-y-3">
@@ -264,12 +485,12 @@ export function LoginPage() {
                     </div>
                     <button
                       onClick={() => {
-                        setIsForgotMode(false);
+                        setMode('login');
                         setResetSuccess(false);
                       }}
                       className="w-full py-2.5 rounded-full bg-[#1e293b] text-white font-bold text-xs hover:bg-[#334155] transition-colors"
                     >
-                      Return to Sign In
+                      Return to Log In
                     </button>
                   </div>
                 ) : (
@@ -306,13 +527,13 @@ export function LoginPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setIsForgotMode(false);
+                        setMode('login');
                         clearError();
                         setFormValidationMsg(null);
                       }}
                       className="w-full py-2 text-xs font-semibold text-[#64748B] hover:text-[#1e293b] transition-colors text-center block"
                     >
-                      Cancel and Return to Sign In
+                      Cancel and Return to Log In
                     </button>
                   </form>
                 )}
