@@ -225,6 +225,31 @@ async def get_simulation_state() -> dict[str, Any]:
     }
 
 
+class DataSourceUpdateRequest(BaseModel):
+    patient_id: str = "P-001"
+    data_source: str  # "WEARABLE" or "BIDMC"
+
+
+@app.post("/api/simulation/source")
+async def update_simulation_source(body: DataSourceUpdateRequest) -> dict[str, Any]:
+    """Set data source mode to WEARABLE or BIDMC."""
+    telemetry_manager.set_data_source(body.patient_id, body.data_source)
+    return {
+        "status": "ok",
+        "patient_id": body.patient_id,
+        "data_source": telemetry_manager.get_data_source(body.patient_id),
+    }
+
+
+@app.get("/api/simulation/source")
+async def query_simulation_source(patient_id: str = "P-001") -> dict[str, Any]:
+    """Query data source mode for a patient."""
+    return {
+        "patient_id": patient_id,
+        "data_source": telemetry_manager.get_data_source(patient_id),
+    }
+
+
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry_endpoint(
     websocket: WebSocket,

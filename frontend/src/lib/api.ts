@@ -136,6 +136,22 @@ export async function resumeSimulation(): Promise<any> {
   return res.json();
 }
 
+export async function setDataSourceMode(patientId: string, dataSource: 'WEARABLE' | 'BIDMC'): Promise<any> {
+  const res = await fetch(`${API_BASE}/simulation/source`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ patient_id: patientId, data_source: dataSource }),
+  });
+  if (!res.ok) throw new Error(`Failed to set data source mode: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchDataSourceMode(patientId: string = 'P-001'): Promise<{ patient_id: string; data_source: string }> {
+  const res = await fetch(`${API_BASE}/simulation/source?patient_id=${patientId}`);
+  if (!res.ok) return { patient_id: patientId, data_source: 'WEARABLE' };
+  return res.json();
+}
+
 export async function resetSimulation(): Promise<any> {
   const res = await fetch(`${API_BASE}/simulation/reset`, { method: 'POST' });
   if (!res.ok) throw new Error(`Failed to reset simulation: ${res.statusText}`);

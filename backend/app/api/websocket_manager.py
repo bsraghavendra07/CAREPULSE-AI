@@ -55,6 +55,7 @@ class TelemetryManager:
         )
 
         # Runtime counters ---------------------------------------------------
+        self.data_source_mode: dict[str, str] = defaultdict(lambda: "WEARABLE")
         self.speed_factor: int = 1
         self.tick_number: int = 0
         self.total_ticks: int = 0
@@ -92,6 +93,14 @@ class TelemetryManager:
     def resume(self) -> None:
         """Resume telemetry streaming."""
         self._paused = False
+
+    def set_data_source(self, patient_id: str, source: str) -> None:
+        """Set telemetry data source: 'WEARABLE' or 'BIDMC'."""
+        self.data_source_mode[patient_id] = source.upper()
+
+    def get_data_source(self, patient_id: str) -> str:
+        """Get current telemetry data source."""
+        return self.data_source_mode.get(patient_id, "WEARABLE")
 
     @property
     def is_paused(self) -> bool:
@@ -180,22 +189,23 @@ class TelemetryManager:
                 pc = self.patient_counters[pid]
                 pc["total_ticks"] += 1
 
-                # 1. Get BIDMC data if available
+                # 1. Get BIDMC data if selected data source is BIDMC
                 bidmc_data: dict[str, Any] | None = None
-                replay_iter = self._replay_iters.get(pid)
-                if replay_iter is not None:
-                    try:
-                        bidmc_data = await replay_iter.__anext__()
-                    except StopAsyncIteration:
-                        # Restart from beginning
-                        self._replayers[pid].reset()
-                        self._replay_iters[pid] = self._replayers[pid].replay(
-                            self.speed_factor
-                        )
+                if self.data_source_mode.get(pid, "WEARABLE") == "BIDMC":
+                    replay_iter = self._replay_iters.get(pid)
+                    if replay_iter is not None:
                         try:
-                            bidmc_data = await self._replay_iters[pid].__anext__()
+                            bidmc_data = await replay_iter.__anext__()
                         except StopAsyncIteration:
-                            bidmc_data = None
+                            # Restart from beginning
+                            self._replayers[pid].reset()
+                            self._replay_iters[pid] = self._replayers[pid].replay(
+                                self.speed_factor
+                            )
+                            try:
+                                bidmc_data = await self._replay_iters[pid].__anext__()
+                            except StopAsyncIteration:
+                                bidmc_data = None
 
                 # 2. Generate vitals via WearableSimulator
                 vitals = self._simulators[pid].generate_vitals(bidmc_data)
@@ -308,6 +318,7 @@ class TelemetryManager:
                 payload: dict[str, Any] = {
                     "timestamp": now_iso,
                     "patient_id": pid,
+                    "data_source": self.data_source_mode.get(pid, "WEARABLE"),
                     "tick_number": self.tick_number,
                     "vitals": _build_vitals_payload(vitals),
                     "signal_quality": sqi_result.model_dump(),
