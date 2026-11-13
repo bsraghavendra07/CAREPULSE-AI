@@ -190,3 +190,4 @@ def create_fhir_flag(
             "start": now_iso,
         },
     }
+

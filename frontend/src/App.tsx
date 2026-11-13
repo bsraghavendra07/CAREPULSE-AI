@@ -85,11 +85,11 @@ function AuthenticatedRoutes({
     );
   }
 
-  // 3. Unauthenticated -> Show Landing Page & Auth Portals
+  // 3. Unauthenticated -> Directly show Hospital Staff Login (all marketing & patient portal copy removed)
   if (!user && !staff && !patient) {
     return (
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<LoginPage />} />
         
         {/* Hospital Staff Authentication */}
         <Route path="/login" element={<LoginPage />} />
