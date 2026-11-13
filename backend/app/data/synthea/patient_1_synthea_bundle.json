@@ -23,26 +23,30 @@
           {
             "system": "urn:carepulse:patient_id",
             "value": "P-001"
+          },
+          {
+            "system": "urn:carepulse:uhid",
+            "value": "UHID-001429"
           }
         ],
         "active": true,
         "name": [
           {
             "use": "official",
-            "family": "Kim",
+            "family": "Sharma",
             "given": [
-              "James"
+              "Anitha"
             ]
           }
         ],
         "telecom": [
           {
             "system": "phone",
-            "value": "555-216-1507",
+            "value": "+91 98450 12345",
             "use": "home"
           }
         ],
-        "gender": "male",
+        "gender": "female",
         "birthDate": "1957-08-08",
         "address": [
           {

@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PatientProfile } from '../types/patient';
 import { TelemetryTick } from '../types/telemetry';
+import { PatientSearchBar } from '../components/search/PatientSearchBar';
 import {
   ResponsiveContainer,
   LineChart,
@@ -52,6 +54,7 @@ export function DashboardPage({
   latestTicks,
   onSelectPatient,
 }: DashboardPageProps) {
+  const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<'All' | 'Critical' | 'Monitoring'>('All');
   const [timeRange, setTimeRange] = useState<'7D' | '30D' | '90D'>('30D');
 
@@ -105,6 +108,17 @@ export function DashboardPage({
 
   return (
     <div className="space-y-6">
+      {/* ─────────────────────────────────────────────────────────────
+          0. PATIENT SEARCH BAR (SECTION 1)
+      ───────────────────────────────────────────────────────────── */}
+      <PatientSearchBar
+        patients={patients}
+        latestTicks={latestTicks}
+        onSelectPatient={(p) => {
+          navigate(`/vitals?patient=${p.id}`);
+        }}
+      />
+
       {/* ─────────────────────────────────────────────────────────────
           1. TOP 4 EXECUTIVE METRIC TILES
       ───────────────────────────────────────────────────────────── */}

@@ -809,6 +809,12 @@ def parse_synthea_fhir_bundle(bundle_data: dict[str, Any]) -> dict[str, Any]:
     gender = patient_res.get("gender", "unknown")
     birth_date = patient_res.get("birthDate", "1970-01-01")
 
+    # Extract or generate UHID
+    uhid = next(
+        (id_obj.get("value") for id_obj in patient_res.get("identifier", []) if "uhid" in id_obj.get("system", "").lower()),
+        f"UHID-{pid.replace('P-', '001')}"
+    )
+
     # Calculate real age
     try:
         b_year = int(birth_date.split("-")[0])
@@ -848,6 +854,7 @@ def parse_synthea_fhir_bundle(bundle_data: dict[str, Any]) -> dict[str, Any]:
     profile: dict[str, Any] = {
         "id": pid,
         "name": full_name,
+        "uhid": uhid,
         "age": age,
         "gender": gender,
         "birthDate": birth_date,

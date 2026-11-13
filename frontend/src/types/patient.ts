@@ -1,6 +1,7 @@
 export interface PatientProfile {
   id: string;
   name: string;
+  uhid?: string;
   gender: string;
   birthDate: string;
   age?: number;

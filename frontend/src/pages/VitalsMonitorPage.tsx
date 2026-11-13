@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PatientProfile } from '../types/patient';
 import { TelemetryTick } from '../types/telemetry';
+import { PatientSearchBar } from '../components/search/PatientSearchBar';
+import { AlertContactsManager } from '../components/alerts/AlertContactsManager';
+import { MultiChannelAlertsDashboard } from '../components/alerts/MultiChannelAlertsDashboard';
+import {
+  AlertContact,
+  MultiChannelAlert,
+  loadPatientContacts,
+  savePatientContacts,
+  evaluateRiskAndGenerateAlert,
+} from '../lib/multiChannelAlertEngine';
 import {
   Heart,
   Activity,
@@ -164,6 +175,80 @@ export function VitalsMonitorPage({
   const selectedPatient = useMemo(() => {
     return patients.find((p) => p.id === selectedPatientId) || patients[0] || initialPatients[0];
   }, [patients, selectedPatientId, initialPatients]);
+
+  // ── Section 1: URL Query Param for Patient Search ──
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const qPid = searchParams.get('patient');
+    if (qPid && patients.length > 0) {
+      const cleanQ = qPid.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const match = patients.find(
+        (p) =>
+          p.id.toLowerCase() === qPid.toLowerCase() ||
+          p.id.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanQ
+      );
+      if (match) {
+        setSelectedPatientId(match.id);
+      }
+    }
+  }, [searchParams, patients]);
+
+  // ── Section 2: Patient Alert Contacts State ──
+  const [alertContacts, setAlertContacts] = useState<AlertContact[]>(() =>
+    loadPatientContacts(selectedPatientId, selectedPatient?.name)
+  );
+
+  // Synchronize alert contacts when patient changes
+  useEffect(() => {
+    if (selectedPatient) {
+      setAlertContacts(loadPatientContacts(selectedPatient.id, selectedPatient.name));
+      if (!isSimulatedHighRisk) {
+        setMultiChannelAlert(null);
+      }
+    }
+  }, [selectedPatientId]);
+
+  // ── Section 3 & 4: Multi-Channel Alert State ──
+  const [multiChannelAlert, setMultiChannelAlert] = useState<MultiChannelAlert | null>(null);
+  const [isSimulatedHighRisk, setIsSimulatedHighRisk] = useState<boolean>(false);
+
+  // ── Section 13: Demo for Judges Handlers ──
+  const handleSimulateHighRisk = () => {
+    setIsSimulatedHighRisk(true);
+    const highRiskV = {
+      hr: 132,
+      spo2: 87,
+      rr: 24,
+      temp: 37.2,
+      trend: 'falling_spo2',
+    };
+    setLiveVitals({ hr: 132, spo2: 87, rr: 24, temp: 37.2 });
+    setEarlyWarningScore(9);
+    setEarlyWarningTier('Urgent');
+
+    const alert = evaluateRiskAndGenerateAlert(
+      selectedPatient?.id || 'P-001',
+      selectedPatient?.name || 'Anitha Sharma',
+      highRiskV,
+      alertContacts
+    );
+    setMultiChannelAlert(alert);
+  };
+
+  const handleResetNominal = () => {
+    setIsSimulatedHighRisk(false);
+    const nominalV = {
+      hr: selectedPatient?.baseline?.heart_rate ?? 78,
+      spo2: selectedPatient?.baseline?.oxygen_saturation ?? 98,
+      rr: selectedPatient?.baseline?.respiratory_rate ?? 16,
+      temp: selectedPatient?.baseline?.body_temperature ?? 36.7,
+    };
+    setLiveVitals(nominalV);
+    setEarlyWarningScore(1);
+    setEarlyWarningTier('Low');
+    setMultiChannelAlert(null);
+  };
 
   // ── Active Data Source (Virtual Wearable vs BIDMC Replay) ──
   const [dataSource, setDataSource] = useState<DataSourceType>('WEARABLE');
@@ -957,6 +1042,17 @@ export function VitalsMonitorPage({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12 animate-in fade-in duration-200">
+      {/* ─────────────────────────────────────────────────────────────
+          0. CLEARLY VISIBLE PATIENT SEARCH BAR (SECTION 1)
+      ───────────────────────────────────────────────────────────── */}
+      <PatientSearchBar
+        patients={patients}
+        latestTicks={latestTicks}
+        onSelectPatient={(p) => {
+          setSelectedPatientId(p.id);
+        }}
+      />
+
       {/* ─────────────────────────────────────────────────────────────
           1. PATIENT VITAL MONITOR & SYNTHEA GENERATOR BAR
       ───────────────────────────────────────────────────────────── */}
@@ -1930,27 +2026,60 @@ export function VitalsMonitorPage({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          11. DATA FLOW (MINIMAL HORIZONTAL FLOW WITH ARROWS)
+          6. AUTOMATIC MULTI-CHANNEL ALERTS (SMS SIMULATION & EMAIL)
+      ───────────────────────────────────────────────────────────── */}
+      <MultiChannelAlertsDashboard
+        currentAlert={multiChannelAlert}
+        contacts={alertContacts}
+        currentVitals={liveVitals}
+        currentRiskLevel={isSimulatedHighRisk ? 'HIGH' : (multiChannelAlert?.riskLevel || ((riskAssessment?.risk_level as string) === 'HIGH' || (riskAssessment?.risk_level as string) === 'CRITICAL' ? 'HIGH' : (riskAssessment?.risk_level as string) === 'MODERATE' || (riskAssessment?.risk_level as string) === 'MEDIUM' ? 'MEDIUM' : 'LOW'))}
+        onSimulateHighRisk={handleSimulateHighRisk}
+        onResetNominal={handleResetNominal}
+        isSimulatedHighRisk={isSimulatedHighRisk}
+      />
+
+      {/* ─────────────────────────────────────────────────────────────
+          7. PATIENT ALERT CONTACTS (SECTION 2)
+      ───────────────────────────────────────────────────────────── */}
+      <AlertContactsManager
+        patientId={selectedPatient?.id || 'P-001'}
+        patientName={selectedPatient?.name || 'Patient'}
+        contacts={alertContacts}
+        onContactsChange={(updated) => setAlertContacts(updated)}
+      />
+
+      {/* ─────────────────────────────────────────────────────────────
+          11. MULTI-CHANNEL NOTIFICATION FLOW (COMPLETE AUTOMATIC PIPELINE)
       ───────────────────────────────────────────────────────────── */}
       <div className="pt-2">
-        <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600">
-          <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-            Synthea Profiles
-          </span>
-          <ArrowRight className="h-3 w-3 text-slate-400" />
-          <span className="font-semibold text-slate-900">
-            {dataSource === 'WEARABLE' ? 'Virtual Wearable' : 'BIDMC Replay'}
-          </span>
-          <ArrowRight className="h-3 w-3 text-slate-400" />
-          <span className="font-semibold text-slate-900">FHIR R4 Ingestion API</span>
-          <ArrowRight className="h-3 w-3 text-slate-400" />
-          <span className="font-semibold text-slate-900">Patient-Specific Risk Engine</span>
-          <ArrowRight className="h-3 w-3 text-slate-400" />
-          <span className="font-semibold text-slate-900">Decision-Support Alert</span>
-          <ArrowRight className="h-3 w-3 text-slate-400" />
-          <span className="font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
-            FHIR Escalation (EN/KN/HI)
-          </span>
+        <div className="p-4 bg-white border border-[#CBD5E1] rounded-2xl shadow-xs space-y-2">
+          <div className="text-xs font-bold text-[#131E3A] flex items-center justify-between">
+            <span>Multi-Channel Automatic Notification Pipeline</span>
+            <span className="text-[10px] text-[#00A896] font-semibold">End-to-End Automated</span>
+          </div>
+          <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl flex flex-wrap items-center justify-center gap-1.5 text-[11px] text-[#475569]">
+            <span className="font-bold text-[#067A6E] bg-[#E6F7F5] px-2 py-0.5 rounded border border-[#B2EBE4]">Patient Search</span>
+            <ArrowRight className="h-3 w-3 text-[#94A3B8]" />
+            <span className="font-semibold text-[#131E3A]">Open Patient</span>
+            <ArrowRight className="h-3 w-3 text-[#94A3B8]" />
+            <span className="font-semibold text-[#131E3A]">Receive / Replay Vitals</span>
+            <ArrowRight className="h-3 w-3 text-[#94A3B8]" />
+            <span className="font-semibold text-[#131E3A]">Risk Detection</span>
+            <ArrowRight className="h-3 w-3 text-[#94A3B8]" />
+            <span className="font-semibold text-[#131E3A]">Risk Level Generated</span>
+            <ArrowRight className="h-3 w-3 text-[#94A3B8]" />
+            <span className="font-semibold text-[#131E3A]">Qualifying Alert Detected</span>
+            <ArrowRight className="h-3 w-3 text-[#94A3B8]" />
+            <span className="font-semibold text-[#131E3A]">Retrieve Registered Contacts</span>
+            <ArrowRight className="h-3 w-3 text-[#94A3B8]" />
+            <span className="font-semibold text-[#131E3A]">Check Notification Preferences</span>
+            <ArrowRight className="h-3 w-3 text-[#94A3B8]" />
+            <span className="font-semibold text-[#131E3A]">Generate Personalized Alert</span>
+            <ArrowRight className="h-3 w-3 text-[#94A3B8]" />
+            <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">📧 Email Alert</span>
+            <span className="text-slate-400 font-bold">+</span>
+            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">📱 SMS Alert (Sim)</span>
+          </div>
         </div>
       </div>
     </div>
