@@ -90,46 +90,18 @@ export function LoginPage() {
     }
   };
 
-  const handleQuickFill = (targetEmail: string, targetPass: string) => {
-    setEmail(targetEmail);
-    setPassword(targetPass);
-    clearError();
-    setFormValidationMsg(null);
-  };
-
   return (
     <div className="min-h-screen bg-[#F0F2F5] flex items-center justify-center p-3 sm:p-6 lg:p-8 selection:bg-[#00A896] selection:text-white">
       {/* 2-COLUMN MAIN CARD CONTAINER */}
       <div className="w-full max-w-4xl lg:max-w-5xl bg-white rounded-2xl sm:rounded-[2rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.12)] border border-[#E2E8F0] overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[580px] lg:min-h-[620px]">
         
         {/* ──────── LEFT SIDE – BRANDING ──────── */}
-        <div className="relative hidden md:flex flex-col justify-end p-8 lg:p-12 overflow-hidden bg-slate-900 select-none">
-          {/* Professional Doctor Background Image */}
-          <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 hover:scale-105"
-            style={{ backgroundImage: "url('/doctor-clean.jpg')" }}
+        <div className="relative hidden md:block overflow-hidden bg-[#0c2a47] select-none">
+          <img
+            src="/doctor-login-panel.jpg"
+            alt="CarePulse - Always Watching. Always Caring."
+            className="w-full h-full object-cover object-bottom"
           />
-
-          {/* Smooth Healthcare Blue Overlay Gradient (Matches reference image) */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#205072]/95 via-[#2C698D]/40 to-transparent" />
-
-          {/* Bottom Branding Content */}
-          <div className="relative z-10 space-y-3">
-            {/* Circular Logo Icon */}
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#00D2C4] to-[#00A896] p-3 shadow-lg flex items-center justify-center border-2 border-white/20">
-              <Stethoscope className="h-9 w-9 text-white stroke-[2.2]" />
-            </div>
-
-            {/* Brand Title */}
-            <div>
-              <h2 className="text-3xl font-extrabold text-white tracking-wider drop-shadow-sm">
-                CAREPULSE
-              </h2>
-              <p className="text-sm font-medium text-white/90 tracking-wide drop-shadow-xs mt-1">
-                Always Watching. Always Caring.
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* ──────── RIGHT SIDE – LOGIN FORM ──────── */}
@@ -348,44 +320,11 @@ export function LoginPage() {
             )}
           </div>
 
-          {/* ──────── FOOTER: SECURITY BADGE & DEMO ACCOUNTS ──────── */}
-          <div className="pt-5 mt-6 border-t border-[#F1F5F9] space-y-3">
+          {/* ──────── FOOTER: SECURITY BADGE ONLY ──────── */}
+          <div className="pt-6 mt-6 border-t border-[#F1F5F9]">
             <div className="flex items-center justify-center space-x-1.5 text-xs font-medium text-[#64748B]">
               <ShieldCheck className="h-4 w-4 text-[#00A896]" />
               <span>Authorized Hospital Staff Only</span>
-            </div>
-
-            {/* Quick-fill Demo Staff Accounts for Testing */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block text-center">
-                Demo Staff Accounts
-              </span>
-              <div className="grid grid-cols-3 gap-1.5 text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill('dr.rivera@hospital.carepulse.org', 'DoctorPassword123!')}
-                  className="py-1.5 px-2 rounded-xl bg-[#F0F7FF] hover:bg-[#E1EFFF] border border-[#D0E2FF] text-[#1E40AF] font-semibold text-center transition-colors truncate"
-                  title="Dr. Rivera (Doctor)"
-                >
-                  Doctor
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill('admin@hospital.carepulse.org', 'AdminPassword123!')}
-                  className="py-1.5 px-2 rounded-xl bg-[#F0FDF4] hover:bg-[#DCFCE7] border border-[#BBF7D0] text-[#166534] font-semibold text-center transition-colors truncate"
-                  title="Hospital Admin"
-                >
-                  Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill('nurse.chen@hospital.carepulse.org', 'NursePassword123!')}
-                  className="py-1.5 px-2 rounded-xl bg-[#FAF5FF] hover:bg-[#F3E8FF] border border-[#E9D5FF] text-[#6B21A8] font-semibold text-center transition-colors truncate"
-                  title="Elena Chen, RN (Nurse)"
-                >
-                  Nurse
-                </button>
-              </div>
             </div>
           </div>
 
