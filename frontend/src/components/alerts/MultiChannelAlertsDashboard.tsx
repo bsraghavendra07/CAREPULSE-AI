@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bell,
   MessageSquare,
@@ -14,6 +14,8 @@ import {
   Globe,
   Radio,
   User,
+  Phone,
+  Loader2,
 } from 'lucide-react';
 import {
   MultiChannelAlert,
@@ -37,6 +39,75 @@ interface MultiChannelAlertsDashboardProps {
   isSimulatedHighRisk?: boolean;
 }
 
+/**
+ * Generates dynamic, clinical decision-support SMS text adhering strictly to medical safety wording.
+ */
+function generateSmsText(
+  vitals: { hr: number; spo2: number; rr?: number; temp?: number },
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH',
+  isSimulatedHighRisk?: boolean,
+  language: 'English' | 'Kannada' | 'Hindi' = 'English'
+): string {
+  const { hr, spo2 } = vitals;
+
+  // Case 1: High Risk with both rising HR and falling SpO2 (or simulated high-risk demo)
+  if (
+    isSimulatedHighRisk ||
+    (hr >= 120 && spo2 <= 90) ||
+    (riskLevel === 'HIGH' && (hr >= 115 || spo2 <= 91))
+  ) {
+    if (language === 'Kannada') {
+      return `🚨 ರೋಗಿಯ ಎಚ್ಚರಿಕೆ: ಹೃದಯ ಬಡಿತ ${hr} bpm, SpO₂ ${spo2}%. ಹೆಚ್ಚುತ್ತಿರುವ ಹೃದಯ ಬಡಿತ ಮತ್ತು ಕುಸಿಯುತ್ತಿರುವ ಆಮ್ಲಜನಕ ಪತ್ತೆಯಾಗಿದೆ. ಅಪಾಯ: HIGH. ತಕ್ಷಣ ವೈದ್ಯಕೀಯ ಪರಿಶೀಲನೆ ಅಗತ್ಯ.`;
+    }
+    if (language === 'Hindi') {
+      return `🚨 मरीज की चेतावनी: हृदय गति ${hr} bpm, SpO₂ ${spo2}%। बढ़ती हृदय गति और गिरता ऑक्सीजन स्तर मिला है। जोखिम: HIGH। तत्काल चिकित्सकीय समीक्षा आवश्यक है।`;
+    }
+    return `🚨 Patient Alert: HR ${hr} bpm, SpO₂ ${spo2}%. Rising heart rate and falling oxygen detected. Risk: HIGH. Immediate clinical review required.`;
+  }
+
+  // Case 2: Falling SpO2 / Respiratory Concern
+  if (spo2 <= 89) {
+    if (language === 'Kannada') {
+      return `🚨 ರೋಗಿಯ ಎಚ್ಚರಿಕೆ: SpO₂ ${spo2}% ಮತ್ತು ಸತತವಾಗಿ ಕಡಿಮೆಯಾಗುತ್ತಿದೆ. ಉಸಿರಾಟದ ಕ್ಷೀಣಿಸುವಿಕೆ ಮಾದರಿ ಪತ್ತೆಯಾಗಿದೆ. ಅಪಾಯ: HIGH. ತುರ್ತು ವೈದ್ಯಕೀಯ ಪರಿಶೀಲನೆ ಅಗತ್ಯ.`;
+    }
+    if (language === 'Hindi') {
+      return `🚨 मरीज की चेतावनी: SpO₂ ${spo2}% और लगातार गिर रहा है। श्वसन गिरावट पैटर्न का पता चला है। जोखिम: HIGH। तत्काल चिकित्सकीय समीक्षा आवश्यक है।`;
+    }
+    return `🚨 Patient Alert: SpO₂ ${spo2}% and continuing to fall. Respiratory deterioration pattern detected. Risk: HIGH. Urgent clinical review required.`;
+  }
+
+  // Case 3: Rising Heart Rate / Cardiac Concern
+  if (hr >= 125) {
+    if (language === 'Kannada') {
+      return `🚨 ರೋಗಿಯ ಎಚ್ಚರಿಕೆ: ನಿರಂತರ ಅಸಹಜ ಪ್ರವೃತ್ತಿಯೊಂದಿಗೆ ಹೃದಯ ಬಡಿತ ${hr} bpm. ಹೃದಯ ಸಂಬಂಧಿತ ಎಚ್ಚರಿಕೆ ಮಾದರಿ ಪತ್ತೆಯಾಗಿದೆ. ಅಪಾಯ: HIGH. ವೈದ್ಯಕೀಯ ಪರಿಶೀಲನೆ ಅಗತ್ಯ.`;
+    }
+    if (language === 'Hindi') {
+      return `🚨 मरीज की चेतावनी: निरंतर असामान्य प्रवृत्ति के साथ हृदय गति ${hr} bpm। हृदय संबंधी चेतावनी पैटर्न मिला है। जोखिम: HIGH। चिकित्सकीय समीक्षा आवश्यक है।`;
+    }
+    return `🚨 Patient Alert: HR ${hr} bpm with a sustained abnormal trend. Cardiac-related warning pattern detected. Risk: HIGH. Clinical review required.`;
+  }
+
+  // Case 4: Medium Risk
+  if (riskLevel === 'MEDIUM' || hr > 100 || spo2 < 95) {
+    if (language === 'Kannada') {
+      return `🚨 ರೋಗಿಯ ಎಚ್ಚರಿಕೆ: ಹೃದಯ ಬಡಿತ ${hr} bpm, SpO₂ ${spo2}%. ಮಧ್ಯಮ ಪ್ರಮುಖ ಚಿಹ್ನೆ ಬದಲಾವಣೆ ಪತ್ತೆಯಾಗಿದೆ. ಅಪಾಯ: MEDIUM. ವೈದ್ಯಕೀಯ ಮೇಲ್ವಿಚಾರಣೆ ಶಿಫಾರಸು ಮಾಡಲಾಗಿದೆ.`;
+    }
+    if (language === 'Hindi') {
+      return `🚨 मरीज की चेतावनी: हृदय गति ${hr} bpm, SpO₂ ${spo2}%। मध्यम महत्वपूर्ण संकेत विचलन मिला है। जोखिम: MEDIUM। चिकित्सकीय निगरानी की सलाह दी जाती है।`;
+    }
+    return `🚨 Patient Alert: HR ${hr} bpm, SpO₂ ${spo2}%. Moderate vital sign variation detected. Risk: MEDIUM. Clinical monitoring advised.`;
+  }
+
+  // Case 5: Normal / Stable
+  if (language === 'Kannada') {
+    return `🚨 ರೋಗಿಯ ಎಚ್ಚರಿಕೆ: ಹೃದಯ ಬಡಿತ ${hr} bpm, SpO₂ ${spo2}%. ಪ್ರಮುಖ ನಿಯತಾಂಕಗಳು ಸ್ಥಿರವಾಗಿವೆ. ಅಪಾಯ: LOW. ನಿಯಮಿತ ಮೇಲ್ವಿಚಾರಣೆ ನಡೆಯುತ್ತಿದೆ.`;
+  }
+  if (language === 'Hindi') {
+    return `🚨 मरीज की चेतावनी: हृदय गति ${hr} bpm, SpO₂ ${spo2}%। महत्वपूर्ण संकेत स्थिर हैं। जोखिम: LOW। नियमित निगरानी जारी है।`;
+  }
+  return `🚨 Patient Alert: HR ${hr} bpm, SpO₂ ${spo2}%. Vitals within stable parameters. Risk: LOW. Routine monitoring ongoing.`;
+}
+
 export function MultiChannelAlertsDashboard({
   currentAlert,
   contacts,
@@ -46,8 +117,14 @@ export function MultiChannelAlertsDashboard({
   onResetNominal,
   isSimulatedHighRisk = false,
 }: MultiChannelAlertsDashboardProps) {
-  // Active selected SMS recipient tab for preview
+  // Active selected SMS recipient tab index
   const [selectedRecipientIndex, setSelectedRecipientIndex] = useState(0);
+
+  // SMS Alert Card State (Clickable Demo Interaction)
+  const [isGeneratingSms, setIsGeneratingSms] = useState(false);
+  const [smsStatus, setSmsStatus] = useState<string>('Standby');
+  const [smsSentTime, setSmsSentTime] = useState<string | null>(null);
+  const [simulatedSmsMessage, setSimulatedSmsMessage] = useState<string | null>(null);
 
   const activeSmsList = currentAlert?.dispatchedSms || [];
   const activeEmailList = currentAlert?.dispatchedEmails || [];
@@ -57,6 +134,66 @@ export function MultiChannelAlertsDashboard({
 
   const emailCount = contacts.filter((c) => c.emailAlerts).length;
   const smsCount = contacts.filter((c) => c.smsAlerts).length;
+
+  // Active contact for SMS card (defaults to Parent / Caregiver)
+  const activeContact: AlertContact =
+    contacts[selectedRecipientIndex] ||
+    contacts.find((c) => c.role === 'Parent / Caregiver') ||
+    contacts[0] || {
+      id: 'default-parent',
+      patientId: 'P-001',
+      name: 'Anitha Sharma',
+      role: 'Parent / Caregiver',
+      email: 'anitha.sharma@example.com',
+      phone: '+91 98450 12345',
+      language: 'English',
+      emailAlerts: true,
+      smsAlerts: true,
+    };
+
+  // Sync high-risk simulation or reset
+  useEffect(() => {
+    if (isSimulatedHighRisk) {
+      const highRiskText = generateSmsText(
+        { hr: 132, spo2: 87 },
+        'HIGH',
+        true,
+        activeContact.language
+      );
+      setSimulatedSmsMessage(highRiskText);
+      setSmsStatus('Alert Generated — High Risk');
+      setSmsSentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    } else if (currentAlert && currentAlert.dispatchedSms.length > 0) {
+      setSimulatedSmsMessage(currentSmsRecord?.message || null);
+    }
+  }, [isSimulatedHighRisk, currentAlert, activeContact.language]);
+
+  // Handle clickable "Send SMS Alert" interaction
+  const handleSendSmsAlert = () => {
+    setIsGeneratingSms(true);
+    setSmsStatus('Generating alert…');
+
+    // Realistic generation delay
+    setTimeout(() => {
+      const generated = generateSmsText(
+        currentVitals,
+        currentRiskLevel,
+        isSimulatedHighRisk,
+        activeContact.language
+      );
+      setSimulatedSmsMessage(generated);
+      setSmsStatus('✅ SMS Alert Sent');
+      setSmsSentTime(
+        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      );
+      setIsGeneratingSms(false);
+    }, 650);
+  };
+
+  const displayedMessage =
+    simulatedSmsMessage ||
+    currentSmsRecord?.message ||
+    generateSmsText(currentVitals, currentRiskLevel, isSimulatedHighRisk, activeContact.language);
 
   return (
     <div className="bg-white rounded-3xl border border-[#E2E8F0] shadow-sm p-6 sm:p-7 space-y-6">
@@ -90,7 +227,11 @@ export function MultiChannelAlertsDashboard({
           {isSimulatedHighRisk && (
             <button
               type="button"
-              onClick={onResetNominal}
+              onClick={() => {
+                onResetNominal();
+                setSimulatedSmsMessage(null);
+                setSmsStatus('Standby');
+              }}
               className="py-2 px-3.5 rounded-full border border-[#CBD5E1] bg-white hover:bg-slate-50 text-xs font-bold text-[#64748B] transition-colors flex items-center space-x-1.5"
             >
               <RefreshCw className="h-3.5 w-3.5 text-[#94A3B8]" />
@@ -165,104 +306,157 @@ export function MultiChannelAlertsDashboard({
         <div className="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
           <span className="text-[10px] font-bold text-[#64748B] uppercase block">SMS Status</span>
           <span className="text-xs font-extrabold text-[#334155] mt-1 block truncate">
-            {activeSmsList.length > 0 ? 'Alert Generated' : 'Standby'}
+            {smsStatus !== 'Standby' ? smsStatus : (activeSmsList.length > 0 ? 'Alert Generated' : 'Standby')}
           </span>
         </div>
       </div>
 
-      {/* ── SECTION 9 & 10: SMS PHONE-STYLE PREVIEW & EMAIL PREVIEW ── */}
+      {/* ── SECTION 9 & 10: SMS ALERT CARD & EMAIL PREVIEW ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-        {/* ──────── LEFT: REALISTIC PHONE-STYLE SMS PREVIEW ──────── */}
+        
+        {/* ──────── LEFT: FULLY CLICKABLE SMS ALERT CARD ──────── */}
         <div className="rounded-3xl border border-[#CBD5E1] bg-slate-900 text-white p-5 sm:p-6 shadow-md flex flex-col justify-between space-y-4">
-          <div>
-            {/* Header: SMS ALERT title + Recipient Switcher */}
+          <div className="space-y-4">
+            
+            {/* 1. Header: SMS ALERT title + Simulation Badge */}
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center space-x-2">
-                <Smartphone className="h-5 w-5 text-[#00D2C4]" />
-                <span className="text-xs font-extrabold tracking-wider uppercase text-white/90">
-                  SMS ALERT
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                  Simulation Mode
-                </span>
+                <div className="h-8 w-8 rounded-full bg-[#00A896]/20 border border-[#00A896]/40 flex items-center justify-center">
+                  <Smartphone className="h-4 w-4 text-[#00D2C4]" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black tracking-wider uppercase text-white">
+                    SMS Alert
+                  </h4>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    Continuous vital sign early-warning dispatch
+                  </span>
+                </div>
               </div>
 
               {/* Recipient Language Badge */}
-              {currentSmsRecord && (
-                <div className="flex items-center space-x-1 text-[11px] font-bold text-white/80 bg-white/10 px-2.5 py-0.5 rounded-full">
-                  <Globe className="h-3 w-3 text-[#00D2C4]" />
-                  <span>{currentSmsRecord.language}</span>
-                </div>
-              )}
+              <div className="flex items-center space-x-1 text-[11px] font-bold text-white/80 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
+                <Globe className="h-3 w-3 text-[#00D2C4]" />
+                <span>{activeContact.language || 'English'}</span>
+              </div>
             </div>
 
-            {/* Recipient Switch Tabs (Parent vs Doctor) */}
-            {activeSmsList.length > 1 && (
-              <div className="flex items-center space-x-1.5 pt-3 pb-2">
+            {/* 2. Recipient Switcher Tabs (Parent / Caregiver default) */}
+            {contacts.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Recipient:</span>
-                {activeSmsList.map((rec, idx) => (
+                {contacts.map((contact, idx) => (
                   <button
-                    key={rec.id}
+                    key={contact.id}
                     type="button"
-                    onClick={() => setSelectedRecipientIndex(idx)}
+                    onClick={() => {
+                      setSelectedRecipientIndex(idx);
+                      setSimulatedSmsMessage(null);
+                      setSmsStatus('Standby');
+                    }}
                     className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
                       selectedRecipientIndex === idx
                         ? 'bg-[#00A896] text-white shadow-xs'
                         : 'bg-white/10 text-slate-300 hover:bg-white/20'
                     }`}
                   >
-                    {rec.recipientName} ({rec.recipientRole.split('/')[0].trim()})
+                    {contact.name} ({contact.role.split('/')[0].trim()})
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Current Recipient Meta Header */}
-            {currentSmsRecord ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 pb-4 text-xs text-slate-300">
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Recipient:</span>
-                  <strong className="text-white">{currentSmsRecord.recipientName}</strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Role:</span>
-                  <strong className="text-white">{currentSmsRecord.recipientRole}</strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Status:</span>
-                  <strong className="text-emerald-400">Alert Generated</strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Time:</span>
-                  <strong className="text-white">{currentSmsRecord.timestamp}</strong>
-                </div>
+            {/* 3. SMS Alert Meta Table */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-white/5 border border-white/10 text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">Recipient</span>
+                <strong className="text-white truncate block" title={activeContact.name}>
+                  {activeContact.name}
+                </strong>
+                <span className="text-[10px] text-slate-400">({activeContact.role})</span>
               </div>
-            ) : (
-              <div className="py-6 text-center text-xs text-slate-400">
-                No active SMS alert generated. Vitals are within normal thresholds.
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">Phone</span>
+                <strong className="text-white font-mono truncate block" title={activeContact.phone}>
+                  {activeContact.phone}
+                </strong>
+                <span className="text-[10px] text-emerald-400">Verified Contact</span>
               </div>
-            )}
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">Alert Status</span>
+                <strong
+                  className={`truncate block font-bold ${
+                    smsStatus.includes('✅')
+                      ? 'text-emerald-400'
+                      : smsStatus.includes('Generating')
+                      ? 'text-amber-400 animate-pulse'
+                      : smsStatus.includes('High Risk')
+                      ? 'text-red-400'
+                      : 'text-slate-300'
+                  }`}
+                >
+                  {smsStatus}
+                </strong>
+                <span className="text-[10px] text-slate-400">
+                  {smsStatus.includes('✅') ? 'Delivered to SIM' : 'Ready to Send'}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold uppercase">Alert Time</span>
+                <strong className="text-white block font-mono">
+                  {smsSentTime || currentSmsRecord?.timestamp || 'Ready'}
+                </strong>
+                <span className="text-[10px] text-slate-400">Local Telemetry</span>
+              </div>
+            </div>
 
-            {/* Phone Message Bubble */}
-            {currentSmsRecord && (
-              <div className="mt-2 space-y-2">
-                <div className="relative max-w-lg bg-gradient-to-br from-[#064E3B] to-[#047857] text-white p-4 rounded-2xl rounded-tl-sm shadow-md border border-emerald-400/30 text-sm leading-relaxed font-sans font-medium">
-                  {currentSmsRecord.message}
-                </div>
-
-                {/* Section 9 Disclaimer Requirement */}
-                <div className="text-[11px] font-medium text-slate-400 pl-1 flex items-center space-x-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                  <span>Prototype Simulation — No real SMS was sent.</span>
-                </div>
+            {/* 4. Message Preview inside SMS Phone-Style Bubble */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span className="font-semibold uppercase tracking-wider text-slate-300">Message Preview</span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  HR: {currentVitals.hr} bpm | SpO₂: {currentVitals.spo2}%
+                </span>
               </div>
-            )}
+
+              {/* Phone Message Bubble */}
+              <div className="relative bg-gradient-to-br from-[#064E3B] to-[#047857] text-white p-4 rounded-2xl rounded-tl-sm shadow-md border border-emerald-400/30 text-sm leading-relaxed font-sans font-medium">
+                {displayedMessage}
+              </div>
+
+              {/* Demo Mode Label & Simulation Disclaimer */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-[11px] font-bold text-amber-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span>Demo Mode — SMS delivery simulated</span>
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  Prototype Simulation — No real SMS was sent.
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Phone Footer Status */}
-          <div className="pt-2 text-[10px] text-slate-400 border-t border-white/10 flex items-center justify-between">
-            <span>Modular SMS Gateway: Standby</span>
-            <span>Target: {currentSmsRecord?.recipientPhone || '+91 98450 XXXXX'}</span>
+          {/* 5. Prominent Button: "Send SMS Alert" */}
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={handleSendSmsAlert}
+              disabled={isGeneratingSms}
+              className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-[#00A896] via-[#028090] to-[#00A896] hover:from-[#009686] hover:to-[#02707e] text-white font-extrabold text-sm flex items-center justify-center space-x-2 shadow-lg shadow-teal-500/25 active:scale-[0.99] transition-all disabled:opacity-60 cursor-pointer"
+            >
+              {isGeneratingSms ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
+                  <span>Generating alert…</span>
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 text-white" />
+                  <span>Send SMS Alert</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -331,3 +525,5 @@ export function MultiChannelAlertsDashboard({
     </div>
   );
 }
+export default MultiChannelAlertsDashboard;
+
