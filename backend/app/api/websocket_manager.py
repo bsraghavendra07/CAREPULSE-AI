@@ -22,6 +22,7 @@ from app.fhir.mapper import create_observation, _UNITS
 from app.simulation.bidmc_replayer import BIDMCReplayer
 from app.simulation.scenarios import ScenarioEngine
 from app.simulation.wearable_simulator import WearableSimulator
+from app.core.patient_risk_engine import calculate_patient_risk
 
 logger = logging.getLogger(__name__)
 
@@ -299,6 +300,13 @@ class TelemetryManager:
                     "respiratory_rate": _extract_value(vitals, "respiratory_rate"),
                 })
 
+                # 6.8 Patient-Specific Decision Support Risk (Synthea Conditions + Trend + Vitals)
+                patient_risk = calculate_patient_risk(
+                    patient=profile,
+                    vitals=vitals,
+                    history=list(self.history[pid]) if pid in self.history else None,
+                )
+
                 # 7. FHIR Observation (store locally with data quality attribution)
                 now_iso = datetime.now(timezone.utc).isoformat()
                 obs_id: str | None = None
@@ -328,6 +336,7 @@ class TelemetryManager:
                     "suggested_specialty": specialty_result.model_dump(),
                     "routed_alert": routed_alert.model_dump() if routed_alert else None,
                     "ml_anomaly": ml_anomaly.model_dump(),
+                    "patient_risk": patient_risk,
                     "personalized": _pers_to_dict(pers_result),
                     "fhir_observation_id": obs_id,
                 }

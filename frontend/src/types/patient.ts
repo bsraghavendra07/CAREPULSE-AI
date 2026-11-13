@@ -3,7 +3,11 @@ export interface PatientProfile {
   name: string;
   gender: string;
   birthDate: string;
+  age?: number;
   condition: string;
+  conditions?: string[];
+  medications?: Array<{ name: string; dosage?: string }>;
+  is_synthetic?: boolean;
   scale2_prescribed: boolean;
   riskSummary: string;
   baseline: {

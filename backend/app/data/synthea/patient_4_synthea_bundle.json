@@ -1,0 +1,589 @@
+{
+  "resourceType": "Bundle",
+  "id": "f3468653-01c9-4739-98cb-1fe1534434b7",
+  "type": "transaction",
+  "timestamp": "2026-11-13T00:32:12.339530+00:00",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:P-004",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "P-004",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+          ],
+          "lastUpdated": "2026-11-13T00:32:12.339530+00:00"
+        },
+        "identifier": [
+          {
+            "system": "https://github.com/synthetichealth/synthea",
+            "value": "b8825d46-5a9a-4b86-b00c-a825624adfaf"
+          },
+          {
+            "system": "urn:carepulse:patient_id",
+            "value": "P-004"
+          }
+        ],
+        "active": true,
+        "name": [
+          {
+            "use": "official",
+            "family": "Jackson",
+            "given": [
+              "Betty"
+            ]
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "555-688-7786",
+            "use": "home"
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1952-12-21",
+        "address": [
+          {
+            "use": "home",
+            "line": [
+              "84 Main Street"
+            ],
+            "city": "Springfield",
+            "state": "MA",
+            "postalCode": "01103",
+            "country": "US"
+          }
+        ],
+        "communication": [
+          {
+            "language": {
+              "coding": [
+                {
+                  "system": "urn:ietf:bcp:47",
+                  "code": "en-US",
+                  "display": "English"
+                }
+              ]
+            }
+          }
+        ],
+        "extension": [
+          {
+            "url": "urn:minearena:condition",
+            "valueString": "Paroxysmal Atrial Fibrillation"
+          },
+          {
+            "url": "urn:minearena:scale2_prescribed",
+            "valueBoolean": false
+          },
+          {
+            "url": "urn:minearena:risk_summary",
+            "valueString": "Susceptible to sudden episodic tachyarrhythmia, hemodynamic instability, and thromboembolism."
+          },
+          {
+            "url": "urn:minearena:baseline_hr",
+            "valueDecimal": 92
+          },
+          {
+            "url": "urn:minearena:baseline_spo2",
+            "valueDecimal": 97
+          },
+          {
+            "url": "urn:minearena:baseline_rr",
+            "valueDecimal": 17
+          },
+          {
+            "url": "urn:minearena:baseline_sbp",
+            "valueDecimal": 132
+          },
+          {
+            "url": "urn:minearena:baseline_temp",
+            "valueDecimal": 36.6
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:enc-P-004",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "enc-P-004",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "IMP",
+          "display": "inpatient encounter"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "308283009",
+                "display": "Post-discharge monitoring evaluation"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/P-004",
+          "display": "Betty Jackson"
+        },
+        "period": {
+          "start": "2026-11-11T00:32:12.339567+00:00",
+          "end": "2026-11-13T00:32:12.339530+00:00"
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "49436004",
+                "display": "Paroxysmal Atrial Fibrillation"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:cond-P-004-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-P-004-1",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "49436004",
+              "display": "Paroxysmal Atrial Fibrillation"
+            }
+          ],
+          "text": "Paroxysmal Atrial Fibrillation"
+        },
+        "subject": {
+          "reference": "Patient/P-004"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-P-004"
+        },
+        "onsetDateTime": "2023-05-23T00:32:12.339585+00:00",
+        "recordedDate": "2026-11-13T00:32:12.339530+00:00"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:cond-P-004-2",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-P-004-2",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "59621000",
+              "display": "Essential Hypertension"
+            }
+          ],
+          "text": "Essential Hypertension"
+        },
+        "subject": {
+          "reference": "Patient/P-004"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-P-004"
+        },
+        "onsetDateTime": "2025-10-30T00:32:12.339595+00:00",
+        "recordedDate": "2026-11-13T00:32:12.339530+00:00"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:med-P-004-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-P-004-1",
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/medicationrequest-category",
+                "code": "outpatient",
+                "display": "Outpatient"
+              }
+            ]
+          }
+        ],
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "198083",
+              "display": "Digoxin 0.125 MG Oral Tablet"
+            }
+          ],
+          "text": "Digoxin 0.125 MG Oral Tablet"
+        },
+        "subject": {
+          "reference": "Patient/P-004"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-P-004"
+        },
+        "authoredOn": "2026-11-11T00:32:12.339609+00:00",
+        "dosageInstruction": [
+          {
+            "text": "Take 1 tablet daily by mouth"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:med-P-004-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-P-004-2",
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/medicationrequest-category",
+                "code": "outpatient",
+                "display": "Outpatient"
+              }
+            ]
+          }
+        ],
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "1364430",
+              "display": "Apixaban 5 MG Oral Tablet"
+            }
+          ],
+          "text": "Apixaban 5 MG Oral Tablet"
+        },
+        "subject": {
+          "reference": "Patient/P-004"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-P-004"
+        },
+        "authoredOn": "2026-11-11T00:32:12.339617+00:00",
+        "dosageInstruction": [
+          {
+            "text": "Take 1 tablet twice daily with or without food"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:med-P-004-3",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-P-004-3",
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/medicationrequest-category",
+                "code": "outpatient",
+                "display": "Outpatient"
+              }
+            ]
+          }
+        ],
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "866416",
+              "display": "Metoprolol Tartrate 25 MG Oral Tablet"
+            }
+          ],
+          "text": "Metoprolol Tartrate 25 MG Oral Tablet"
+        },
+        "subject": {
+          "reference": "Patient/P-004"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-P-004"
+        },
+        "authoredOn": "2026-11-11T00:32:12.339622+00:00",
+        "dosageInstruction": [
+          {
+            "text": "Take 1 tablet twice daily for rate control"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:obs-P-004-baseline-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-P-004-baseline-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8867-4",
+              "display": "Heart rate"
+            }
+          ],
+          "text": "Heart rate"
+        },
+        "subject": {
+          "reference": "Patient/P-004"
+        },
+        "effectiveDateTime": "2026-11-13T00:32:12.339530+00:00",
+        "valueQuantity": {
+          "value": 92.0,
+          "unit": "beats/min",
+          "system": "http://unitsofmeasure.org",
+          "code": "beats/min"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:obs-P-004-baseline-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-P-004-baseline-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2708-6",
+              "display": "Oxygen saturation in Arterial blood"
+            }
+          ],
+          "text": "Oxygen saturation in Arterial blood"
+        },
+        "subject": {
+          "reference": "Patient/P-004"
+        },
+        "effectiveDateTime": "2026-11-13T00:32:12.339530+00:00",
+        "valueQuantity": {
+          "value": 97.0,
+          "unit": "%",
+          "system": "http://unitsofmeasure.org",
+          "code": "%"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:obs-P-004-baseline-3",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-P-004-baseline-3",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "9279-1",
+              "display": "Respiratory rate"
+            }
+          ],
+          "text": "Respiratory rate"
+        },
+        "subject": {
+          "reference": "Patient/P-004"
+        },
+        "effectiveDateTime": "2026-11-13T00:32:12.339530+00:00",
+        "valueQuantity": {
+          "value": 17.0,
+          "unit": "breaths/minute",
+          "system": "http://unitsofmeasure.org",
+          "code": "breaths/minute"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:obs-P-004-baseline-4",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-P-004-baseline-4",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8480-6",
+              "display": "Systolic blood pressure"
+            }
+          ],
+          "text": "Systolic blood pressure"
+        },
+        "subject": {
+          "reference": "Patient/P-004"
+        },
+        "effectiveDateTime": "2026-11-13T00:32:12.339530+00:00",
+        "valueQuantity": {
+          "value": 132.0,
+          "unit": "mm[Hg]",
+          "system": "http://unitsofmeasure.org",
+          "code": "mm[Hg]"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:obs-P-004-baseline-5",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-P-004-baseline-5",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8310-5",
+              "display": "Body temperature"
+            }
+          ],
+          "text": "Body temperature"
+        },
+        "subject": {
+          "reference": "Patient/P-004"
+        },
+        "effectiveDateTime": "2026-11-13T00:32:12.339530+00:00",
+        "valueQuantity": {
+          "value": 36.6,
+          "unit": "Cel",
+          "system": "http://unitsofmeasure.org",
+          "code": "Cel"
+        }
+      }
+    }
+  ],
+  "_synthea_metadata": {
+    "generator": "Synthea Synthetic Healthcare Engine",
+    "version": "3.2.0-rc",
+    "seed": 97153,
+    "module": "Atrial Fibrillation with Rapid Ventricular Response",
+    "department": "Cardiology",
+    "specialist": "Dr. Robert Rivera, MD"
+  }
+}

@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from typing import Any
+from pathlib import Path
+from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException
 
 from app.core.news2 import calculate_news2, evaluate_hypercapnic_failure
+from app.simulation.synthea_generator import SyntheaGenerator, load_all_synthea_patients
+from app.core.patient_risk_engine import calculate_patient_risk
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
 
@@ -25,6 +29,53 @@ def set_telemetry_manager(manager: Any) -> None:
     """Inject telemetry manager reference to query real-time scores and baseline."""
     global _manager
     _manager = manager
+
+
+class GeneratePatientsRequest(BaseModel):
+    count: int = 5
+
+
+@router.post("/generate")
+async def generate_synthea_patients(body: GeneratePatientsRequest) -> dict[str, Any]:
+    """Generate dynamic synthetic patients using Synthea FHIR R4 generation engine."""
+    count = max(1, min(100, int(body.count)))
+    synthea_dir = Path(__file__).resolve().parent.parent / "data" / "synthea"
+    generator = SyntheaGenerator(output_dir=synthea_dir)
+    bundles = generator.generate_and_save_batch(count)
+
+    # Parse and update active patients dictionary
+    updated = load_all_synthea_patients(synthea_dir)
+    set_patients(updated)
+
+    if _manager is not None:
+        _manager.init_engines(updated)
+        for b in bundles:
+            try:
+                _manager.fhir_store.store(b)
+            except Exception:
+                pass
+
+    return {
+        "status": "success",
+        "count": len(updated),
+        "patients": list(updated.values()),
+        "message": f"Successfully generated {len(updated)} synthetic patient profiles from Synthea FHIR R4 bundles.",
+    }
+
+
+class EvaluateRiskRequest(BaseModel):
+    patient_id: str
+    vitals: dict[str, Any]
+
+
+@router.post("/evaluate-risk")
+async def evaluate_risk_endpoint(body: EvaluateRiskRequest) -> dict[str, Any]:
+    """Evaluate transparent, explainable decision-support risk score."""
+    patient = _patients.get(body.patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail=f"Patient {body.patient_id} not found")
+    history = list(_manager.history.get(body.patient_id, [])) if _manager else []
+    return calculate_patient_risk(patient, body.vitals, history)
 
 
 @router.get("/")

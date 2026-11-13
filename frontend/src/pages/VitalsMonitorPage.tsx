@@ -16,6 +16,12 @@ import {
   Info,
   Clock,
   Radio,
+  Sparkles,
+  RefreshCw,
+  UserCheck,
+  Pill,
+  FileText,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -27,6 +33,10 @@ import {
   CartesianGrid,
 } from 'recharts';
 import {
+  fetchPatients,
+  generateSyntheaPatients,
+  evaluatePatientRisk,
+  PatientRiskResult,
   setDataSourceMode,
   setSimulationSpeed,
   pauseSimulation,
@@ -66,19 +76,30 @@ interface AlertItem {
 }
 
 export function VitalsMonitorPage({
-  patients,
+  patients: initialPatients,
   latestTicks,
-  telemetryHistory,
   connected,
 }: VitalsMonitorPageProps) {
-  // ── Patient Identification (Default to Patient P001) ──
+  // ── Dynamic Synthea Patient State ──
+  const [patients, setPatients] = useState<PatientProfile[]>(initialPatients);
   const [selectedPatientId, setSelectedPatientId] = useState<string>(
-    patients[0]?.id || 'P-001'
+    initialPatients[0]?.id || 'P-001'
   );
+  const [genCount, setGenCount] = useState<number>(5);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [genToast, setGenToast] = useState<string | null>(null);
+
+  // Sync initial patients when prop updates
+  useEffect(() => {
+    if (initialPatients.length > 0 && patients.length === 0) {
+      setPatients(initialPatients);
+      setSelectedPatientId(initialPatients[0].id);
+    }
+  }, [initialPatients]);
 
   const selectedPatient = useMemo(() => {
-    return patients.find((p) => p.id === selectedPatientId) || patients[0];
-  }, [patients, selectedPatientId]);
+    return patients.find((p) => p.id === selectedPatientId) || patients[0] || initialPatients[0];
+  }, [patients, selectedPatientId, initialPatients]);
 
   // ── Active Data Source (Virtual Wearable vs BIDMC Replay) ──
   const [dataSource, setDataSource] = useState<DataSourceType>('WEARABLE');
@@ -103,10 +124,32 @@ export function VitalsMonitorPage({
 
   // Current values
   const [liveVitals, setLiveVitals] = useState({
-    hr: 78,
-    spo2: 98,
-    rr: 16,
-    temp: 36.7,
+    hr: selectedPatient?.baseline?.heart_rate ?? 78,
+    spo2: selectedPatient?.baseline?.oxygen_saturation ?? 98,
+    rr: selectedPatient?.baseline?.respiratory_rate ?? 16,
+    temp: selectedPatient?.baseline?.body_temperature ?? 36.7,
+  });
+
+  // ── Prototype Decision-Support Risk Score State ──
+  const [riskAssessment, setRiskAssessment] = useState<PatientRiskResult>({
+    patient_id: selectedPatient?.id || 'P-001',
+    risk_score: 18,
+    risk_level: 'LOW',
+    components: {
+      vital_abnormality: 0,
+      trend_severity: 0,
+      patient_context: 18,
+    },
+    factors: [
+      `Baseline clinical profile: ${selectedPatient?.condition || 'Post-Discharge Monitoring'}`,
+      'All monitored vital signs within baseline clinical ranges',
+    ],
+    alert_title: 'Physiological vitals stable',
+    alert_reason: 'Current parameters and trends are within acceptable baseline bounds for this patient.',
+    primary_condition: selectedPatient?.condition || 'Post-Discharge Monitoring',
+    conditions: selectedPatient?.conditions || [selectedPatient?.condition || 'Post-Discharge Monitoring'],
+    medications: selectedPatient?.medications || [],
+    disclaimer: 'Decision-support suggestion — not a clinical diagnosis.',
   });
 
   // Recent Alerts list
@@ -121,7 +164,7 @@ export function VitalsMonitorPage({
     },
   ]);
 
-  // Local trend history buffer for smooth, reliable updates
+  // Local trend history buffer for smooth updates
   const [localTrendBuffer, setLocalTrendBuffer] = useState<
     Array<{
       time: string;
@@ -150,7 +193,6 @@ export function VitalsMonitorPage({
     return initData;
   });
 
-  // Keep format time helper
   const getNowTimeStr = () => {
     const d = new Date();
     return `${d.getHours().toString().padStart(2, '0')}:${d
@@ -159,7 +201,195 @@ export function VitalsMonitorPage({
       .padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
   };
 
-  // ── Sync with WebSocket when available ──
+  // ── 1. Dynamic Synthea Generation Handler ──
+  const handleGenerateSynthea = async () => {
+    setIsGenerating(true);
+    setGenToast(null);
+    try {
+      const res = await generateSyntheaPatients(genCount);
+      setPatients(res.patients);
+      if (res.patients.length > 0) {
+        setSelectedPatientId(res.patients[0].id);
+      }
+      setGenToast(`Generated ${res.patients.length} synthetic patient profiles via Synthea FHIR R4 engine.`);
+      setTimeout(() => setGenToast(null), 5000);
+    } catch (err: any) {
+      setGenToast(`Generation error: ${err.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // ── 2. Evaluate Patient-Specific Risk ──
+  const triggerRiskEvaluation = (currentVitals: typeof liveVitals, timeStr: string) => {
+    if (!selectedPatient) return;
+
+    const condList = selectedPatient.conditions || [selectedPatient.condition || ''];
+    const condStr = condList.join(' ').toLowerCase();
+    const isScale2 = selectedPatient.scale2_prescribed || condStr.includes('copd') || condStr.includes('emphysema');
+
+    let vitScore = 0;
+    let trendScore = 0;
+    let ctxScore = 0;
+    const factors: string[] = [];
+
+    // Check special events first
+    if (probeRemovedDetected || (currentVitals.spo2 === 0 && currentVitals.hr === 0)) {
+      setRiskAssessment({
+        patient_id: selectedPatient.id,
+        risk_score: 15,
+        risk_level: 'LOW',
+        components: { vital_abnormality: 0, trend_severity: 0, patient_context: 15 },
+        factors: [
+          'Probe Removal Detected: SpO₂ sensor detached and HR flatlined',
+          'Clinical deterioration suppressed to prevent false alarm',
+        ],
+        alert_title: 'Probe Removal Detected',
+        alert_reason: 'SpO₂ signal unavailable and heart rate signal flatlined. Clinical scoring suppressed for sensor maintenance.',
+        primary_condition: selectedPatient.condition,
+        conditions: condList,
+        medications: selectedPatient.medications || [],
+        disclaimer: 'Decision-support suggestion — not a clinical diagnosis.',
+      });
+      return;
+    }
+
+    if (dataGapDetected) {
+      setRiskAssessment({
+        patient_id: selectedPatient.id,
+        risk_score: 20,
+        risk_level: 'LOW',
+        components: { vital_abnormality: 0, trend_severity: 5, patient_context: 15 },
+        factors: [
+          'Data Gap Detected: telemetry packet stream interrupted',
+          'Patient monitor buffer active awaiting reconnect',
+        ],
+        alert_title: 'Telemetry Data Gap Detected',
+        alert_reason: 'Temporary interruption in incoming sensor packets. System maintains active baseline state.',
+        primary_condition: selectedPatient.condition,
+        conditions: condList,
+        medications: selectedPatient.medications || [],
+        disclaimer: 'Decision-support suggestion — not a clinical diagnosis.',
+      });
+      return;
+    }
+
+    // Component A: Vital Abnormality (0-50 pts)
+    if (isScale2) {
+      if (currentVitals.spo2 < 84) {
+        vitScore += 35;
+        factors.push(`SpO₂ (${currentVitals.spo2}%) critically below hypercapnic threshold (target 88–92%)`);
+      } else if (currentVitals.spo2 < 88) {
+        vitScore += 22;
+        factors.push(`SpO₂ (${currentVitals.spo2}%) below prescribed target range (88–92%)`);
+      } else if (currentVitals.spo2 > 96) {
+        vitScore += 10;
+        factors.push(`SpO₂ (${currentVitals.spo2}%) elevated above safe limit for hypercapnia`);
+      }
+    } else {
+      if (currentVitals.spo2 <= 91) {
+        vitScore += 35;
+        factors.push(`SpO₂ (${currentVitals.spo2}%) significantly below standard threshold (< 92%)`);
+      } else if (currentVitals.spo2 <= 94) {
+        vitScore += 20;
+        factors.push(`SpO₂ (${currentVitals.spo2}%) moderately hypoxic (92–94%)`);
+      }
+    }
+
+    if (currentVitals.hr >= 140) {
+      vitScore += 30;
+      factors.push(`Extreme tachycardia: Heart rate ${currentVitals.hr} bpm`);
+    } else if (currentVitals.hr >= 115) {
+      vitScore += 18;
+      factors.push(`Moderate tachycardia: Heart rate ${currentVitals.hr} bpm`);
+    }
+
+    if (currentVitals.rr >= 24) {
+      vitScore += 22;
+      factors.push(`Elevated tachypnea (${currentVitals.rr} /min)`);
+    }
+
+    // Component B: Trend Severity (0-30 pts)
+    if (scenario === 'Gradual Vital Drift' || currentVitals.spo2 <= 94) {
+      trendScore += 24;
+      factors.push('Sustained downward SpO₂ trend detected over time');
+    } else if (scenario === 'Sudden Spike' || currentVitals.hr >= 140) {
+      trendScore += 28;
+      factors.push(`Rapid acute heart rate surge (+${currentVitals.hr - 78} bpm)`);
+    }
+
+    // Component C: Patient Clinical Context from Synthea (0-20 pts)
+    const hasRespiratory = condStr.includes('copd') || condStr.includes('asthma') || condStr.includes('pulmonary');
+    const hasCardio = condStr.includes('heart') || condStr.includes('hyper') || condStr.includes('cardiac') || condStr.includes('fib');
+
+    if (hasRespiratory && (currentVitals.spo2 <= 94 || currentVitals.rr >= 21)) {
+      ctxScore += 18;
+      factors.push(`Respiratory condition context (${condList[0]}) increases hypoxia alert priority`);
+      const respMed = selectedPatient.medications?.find((m) =>
+        ['albuterol', 'fluticasone', 'salmeterol', 'budesonide'].some((w) => m.name.toLowerCase().includes(w))
+      );
+      if (respMed) {
+        factors.push(`Current Medication Context: ${respMed.name}`);
+      }
+    }
+
+    if (hasCardio && (currentVitals.hr >= 115 || currentVitals.hr <= 50)) {
+      ctxScore += 18;
+      factors.push(`Cardiovascular clinical context (${condList[0]}) elevates tachyarrhythmia alert relevance`);
+      const cardioMed = selectedPatient.medications?.find((m) =>
+        ['metoprolol', 'furosemide', 'digoxin', 'lisinopril', 'apixaban'].some((w) => m.name.toLowerCase().includes(w))
+      );
+      if (cardioMed) {
+        factors.push(`Current Medication Context: ${cardioMed.name}`);
+      }
+    }
+
+    if (ctxScore === 0 && condList.length > 0) {
+      ctxScore = 5;
+      factors.push(`Baseline clinical profile: ${condList[0]}`);
+    }
+
+    const total = Math.min(100, vitScore + trendScore + ctxScore);
+    const riskLevel: 'LOW' | 'MODERATE' | 'HIGH' =
+      total >= 70 ? 'HIGH' : total >= 40 ? 'MODERATE' : 'LOW';
+
+    let alertTitle = 'Physiological vitals stable';
+    let alertReason = 'Current parameters and trends are within acceptable baseline bounds for this patient.';
+
+    if (total >= 70) {
+      if (currentVitals.hr >= 140) {
+        alertTitle = 'Critical heart-rate spike';
+        alertReason = `Heart rate increased acutely to ${currentVitals.hr} bpm. Patient clinical history of ${condList[0]} elevates alert urgency.`;
+      } else {
+        alertTitle = 'Sustained SpO₂ deterioration detected';
+        alertReason = `The alert is primarily driven by the sustained decline in SpO₂, with respiratory history (${condList[0]}) increasing the relevance of the event.`;
+      }
+    } else if (total >= 40) {
+      alertTitle = 'Moderate physiological divergence';
+      alertReason = `Departure from baseline vitals observed. Clinical context of ${condList[0]} warrants continued bedside monitoring.`;
+    }
+
+    setRiskAssessment({
+      patient_id: selectedPatient.id,
+      patient_name: selectedPatient.name,
+      risk_score: total,
+      risk_level: riskLevel,
+      components: {
+        vital_abnormality: vitScore,
+        trend_severity: trendScore,
+        patient_context: ctxScore,
+      },
+      factors: factors.length > 0 ? factors : ['Vitals within baseline limits'],
+      alert_title: alertTitle,
+      alert_reason: alertReason,
+      primary_condition: selectedPatient.condition,
+      conditions: condList,
+      medications: selectedPatient.medications || [],
+      disclaimer: 'Decision-support suggestion — not a clinical diagnosis.',
+    });
+  };
+
+  // ── Sync with WebSocket Ticks ──
   const tick = latestTicks[selectedPatientId];
   useEffect(() => {
     if (!tick) return;
@@ -188,26 +418,25 @@ export function VitalsMonitorPage({
     setMotionNoiseActive(isMotion);
 
     if (!isDropout) {
-      setLiveVitals({
-        hr: isProbe ? 0 : typeof hrVal === 'number' ? hrVal : 78,
-        spo2: isProbe ? 0 : typeof spo2Val === 'number' ? spo2Val : 98,
-        rr: typeof rrVal === 'number' ? rrVal : 16,
-        temp: typeof tempVal === 'number' ? tempVal : 36.7,
-      });
+      const updatedVitals = {
+        hr: isProbe ? 0 : typeof hrVal === 'number' ? hrVal : liveVitals.hr,
+        spo2: isProbe ? 0 : typeof spo2Val === 'number' ? spo2Val : liveVitals.spo2,
+        rr: typeof rrVal === 'number' ? rrVal : liveVitals.rr,
+        temp: typeof tempVal === 'number' ? tempVal : liveVitals.temp,
+      };
 
-      setLocalTrendBuffer((prev) => {
-        const next = [
-          ...prev,
-          {
-            time: timeStr,
-            hr: isProbe ? 0 : typeof hrVal === 'number' ? hrVal : 78,
-            spo2: isProbe ? 0 : typeof spo2Val === 'number' ? spo2Val : 98,
-            rr: typeof rrVal === 'number' ? rrVal : 16,
-            temp: typeof tempVal === 'number' ? tempVal : 36.7,
-          },
-        ];
-        return next.slice(-30);
-      });
+      setLiveVitals(updatedVitals);
+
+      setLocalTrendBuffer((prev) => [
+        ...prev.slice(-29),
+        { time: timeStr, ...updatedVitals },
+      ]);
+
+      if (tick.patient_risk) {
+        setRiskAssessment(tick.patient_risk);
+      } else {
+        triggerRiskEvaluation(updatedVitals, timeStr);
+      }
     }
   }, [tick]);
 
@@ -229,7 +458,7 @@ export function VitalsMonitorPage({
     }
   };
 
-  // ── Simulation Engine Step (Active client generator for precise scenarios) ──
+  // ── Simulation Engine Step (Generates changing vitals + risk score updates) ──
   const simStepRef = useRef<number>(0);
   const driftStageRef = useRef<number>(0);
   const spikeStageRef = useRef<number>(0);
@@ -250,24 +479,27 @@ export function VitalsMonitorPage({
       setLastUpdatedTime(timeStr);
 
       if (dataSource === 'WEARABLE') {
-        // ── 1. Virtual Wearable Scenarios ──
         if (scenario === 'Normal') {
           setDataGapDetected(false);
           setProbeRemovedDetected(false);
           setMotionNoiseActive(false);
 
-          const newHr = 74 + Math.floor(Math.random() * 8); // 74–82 bpm
-          const newSpo2 = 97 + Math.floor(Math.random() * 3); // 97–99%
-          const newRr = 15 + Math.floor(Math.random() * 4); // 15–18 /min
-          const newTemp = 36.6 + Math.floor(Math.random() * 3) * 0.1; // 36.6–36.8 °C
+          const baseHr = selectedPatient?.baseline?.heart_rate || 78;
+          const baseSpo2 = selectedPatient?.baseline?.oxygen_saturation || 98;
+          const baseRr = selectedPatient?.baseline?.respiratory_rate || 16;
+          const baseTemp = selectedPatient?.baseline?.body_temperature || 36.7;
 
-          setLiveVitals({ hr: newHr, spo2: newSpo2, rr: newRr, temp: Number(newTemp.toFixed(1)) });
-          setLocalTrendBuffer((prev) => [
-            ...prev.slice(-29),
-            { time: timeStr, hr: newHr, spo2: newSpo2, rr: newRr, temp: Number(newTemp.toFixed(1)) },
-          ]);
+          const newHr = baseHr + Math.floor(Math.sin(step) * 4);
+          const newSpo2 = Math.min(100, Math.max(95, baseSpo2 + (step % 2 === 0 ? 0 : 1)));
+          const newRr = baseRr + (step % 3 === 0 ? 1 : 0);
+          const newTemp = Number((baseTemp + (step % 2 === 0 ? 0.1 : 0)).toFixed(1));
 
-          // Optional FHIR R4 ingestion in background
+          const newV = { hr: newHr, spo2: newSpo2, rr: newRr, temp: newTemp };
+          setLiveVitals(newV);
+          setLocalTrendBuffer((prev) => [...prev.slice(-29), { time: timeStr, ...newV }]);
+          triggerRiskEvaluation(newV, timeStr);
+
+          // FHIR ingestion in background
           ingestFhirObservation({
             patient_id: selectedPatientId,
             vital_name: 'oxygen_saturation',
@@ -281,20 +513,19 @@ export function VitalsMonitorPage({
 
           driftStageRef.current += 1;
           const stage = driftStageRef.current;
-          // SpO2: 98 -> 97 -> 96 -> 95 -> 94
-          const newSpo2 = Math.max(92, 98 - Math.floor(stage / 2));
-          // HR gradually increases: 76 -> 82 -> 88 -> 95
-          const newHr = Math.min(108, 76 + stage * 2);
-          const newRr = 16 + Math.min(6, Math.floor(stage / 2));
+          // SpO2: 98 -> 97 -> 96 -> 95 -> 94 -> 92
+          const newSpo2 = Math.max(90, 98 - Math.floor(stage / 2));
+          // HR: increases 78 -> 84 -> 92 -> 102
+          const newHr = Math.min(115, 78 + stage * 2);
+          const newRr = 16 + Math.min(8, Math.floor(stage / 2));
           const newTemp = 36.8;
 
-          setLiveVitals({ hr: newHr, spo2: newSpo2, rr: newRr, temp: newTemp });
-          setLocalTrendBuffer((prev) => [
-            ...prev.slice(-29),
-            { time: timeStr, hr: newHr, spo2: newSpo2, rr: newRr, temp: newTemp },
-          ]);
+          const newV = { hr: newHr, spo2: newSpo2, rr: newRr, temp: newTemp };
+          setLiveVitals(newV);
+          setLocalTrendBuffer((prev) => [...prev.slice(-29), { time: timeStr, ...newV }]);
+          triggerRiskEvaluation(newV, timeStr);
 
-          if (newSpo2 <= 95) {
+          if (newSpo2 <= 94) {
             setAlerts((prev) => {
               if (prev.some((a) => a.type === 'early_drift' && a.time === timeStr)) return prev;
               return [
@@ -303,7 +534,7 @@ export function VitalsMonitorPage({
                   type: 'early_drift',
                   severity: 'yellow',
                   title: 'Early deterioration detected',
-                  description: 'SpO₂ has shown a sustained downward trend.',
+                  description: `SpO₂ has shown a sustained downward trend (${newSpo2}%). Context: ${selectedPatient?.condition || 'Chronic illness'}.`,
                   time: timeStr,
                 },
                 ...prev.slice(0, 7),
@@ -317,18 +548,16 @@ export function VitalsMonitorPage({
 
           spikeStageRef.current = (spikeStageRef.current + 1) % 6;
           const phase = spikeStageRef.current;
-          // 78 -> 145 -> 150 -> 82
           const spikeSequence = [78, 145, 150, 148, 88, 80];
           const newHr = spikeSequence[phase];
           const newSpo2 = 97;
           const newRr = phase >= 1 && phase <= 3 ? 24 : 16;
           const newTemp = 36.7;
 
-          setLiveVitals({ hr: newHr, spo2: newSpo2, rr: newRr, temp: newTemp });
-          setLocalTrendBuffer((prev) => [
-            ...prev.slice(-29),
-            { time: timeStr, hr: newHr, spo2: newSpo2, rr: newRr, temp: newTemp },
-          ]);
+          const newV = { hr: newHr, spo2: newSpo2, rr: newRr, temp: newTemp };
+          setLiveVitals(newV);
+          setLocalTrendBuffer((prev) => [...prev.slice(-29), { time: timeStr, ...newV }]);
+          triggerRiskEvaluation(newV, timeStr);
 
           if (newHr >= 140) {
             setAlerts((prev) => {
@@ -339,7 +568,7 @@ export function VitalsMonitorPage({
                   type: 'spike',
                   severity: 'red',
                   title: 'Critical heart-rate spike',
-                  description: `Heart rate increased to ${newHr} bpm.`,
+                  description: `Heart rate increased acutely to ${newHr} bpm. Context: ${selectedPatient?.condition || 'Cardiovascular'}.`,
                   time: timeStr,
                 },
                 ...prev.slice(0, 7),
@@ -351,7 +580,7 @@ export function VitalsMonitorPage({
           setProbeRemovedDetected(false);
           setMotionNoiseActive(false);
 
-          // Temporarily stop generating readings; dashboard keeps working normally
+          triggerRiskEvaluation(liveVitals, timeStr);
           setAlerts((prev) => {
             if (prev.some((a) => a.type === 'gap')) return prev;
             return [
@@ -360,7 +589,7 @@ export function VitalsMonitorPage({
                 type: 'gap',
                 severity: 'yellow',
                 title: 'Data Gap Detected',
-                description: 'Telemetry packet transmission delayed or missing from sensor.',
+                description: 'Sensor packets delayed or missing. Telemetry engine awaiting next transmission.',
                 time: timeStr,
               },
               ...prev.slice(0, 7),
@@ -371,18 +600,16 @@ export function VitalsMonitorPage({
           setProbeRemovedDetected(false);
           setMotionNoiseActive(true);
 
-          // Fluctuations: SpO2: 98 -> 96 -> 99 -> 97 -> 98
           const noiseSeq = [98, 96, 99, 97, 98, 96];
           const newSpo2 = noiseSeq[step % noiseSeq.length];
           const newHr = 78 + (step % 2 === 0 ? 4 : -3);
           const newRr = 16;
           const newTemp = 36.7;
 
-          setLiveVitals({ hr: newHr, spo2: newSpo2, rr: newRr, temp: newTemp });
-          setLocalTrendBuffer((prev) => [
-            ...prev.slice(-29),
-            { time: timeStr, hr: newHr, spo2: newSpo2, rr: newRr, temp: newTemp },
-          ]);
+          const newV = { hr: newHr, spo2: newSpo2, rr: newRr, temp: newTemp };
+          setLiveVitals(newV);
+          setLocalTrendBuffer((prev) => [...prev.slice(-29), { time: timeStr, ...newV }]);
+          triggerRiskEvaluation(newV, timeStr);
 
           setAlerts((prev) => {
             if (prev.some((a) => a.type === 'noise')) return prev;
@@ -392,7 +619,7 @@ export function VitalsMonitorPage({
                 type: 'noise',
                 severity: 'yellow',
                 title: 'Motion-related noise',
-                description: 'Photoplethysmogram baseline tremor detected. Filtering active.',
+                description: 'Artifact detected on PPG baseline. Clinical deterioration scoring guarded.',
                 time: timeStr,
               },
               ...prev.slice(0, 7),
@@ -403,12 +630,10 @@ export function VitalsMonitorPage({
           setProbeRemovedDetected(true);
           setMotionNoiseActive(false);
 
-          // Set SpO2 = 0 or null and HR flatline
-          setLiveVitals({ hr: 0, spo2: 0, rr: 16, temp: 36.7 });
-          setLocalTrendBuffer((prev) => [
-            ...prev.slice(-29),
-            { time: timeStr, hr: 0, spo2: 0, rr: 16, temp: 36.7 },
-          ]);
+          const newV = { hr: 0, spo2: 0, rr: 16, temp: 36.7 };
+          setLiveVitals(newV);
+          setLocalTrendBuffer((prev) => [...prev.slice(-29), { time: timeStr, ...newV }]);
+          triggerRiskEvaluation(newV, timeStr);
 
           setAlerts((prev) => {
             if (prev.some((a) => a.type === 'probe')) return prev;
@@ -426,12 +651,11 @@ export function VitalsMonitorPage({
           });
         }
       } else {
-        // ── 2. BIDMC Replay Data (Genuine BIDMC CSV replay sequence) ──
+        // ── 2. BIDMC Replay Data ──
         setDataGapDetected(false);
         setProbeRemovedDetected(false);
         setMotionNoiseActive(false);
 
-        // Standard BIDMC Patient 01 physiological stream
         const bidmcHrPattern = [77, 75, 78, 78, 79, 77, 78, 77, 78, 76, 75, 77, 78, 79];
         const bidmcSpo2Pattern = [98, 98, 99, 99, 99, 98, 99, 99, 98, 98, 99, 98, 98, 99];
         const bidmcRrPattern = [15.3, 16.2, 15.8, 16.0, 16.3, 17.0, 16.1, 16.4, 17.1, 16.0];
@@ -440,16 +664,13 @@ export function VitalsMonitorPage({
         const newSpo2 = bidmcSpo2Pattern[step % bidmcSpo2Pattern.length];
         const newRr = bidmcRrPattern[step % bidmcRrPattern.length];
 
-        // Body temperature is generated by simulator (BIDMC does not have temperature)
-        // Realistic 36.5°C -> 36.6°C -> 36.7°C
         const tempSeq = [36.5, 36.6, 36.7, 36.6, 36.7, 36.8];
         const newTemp = tempSeq[Math.floor(step / 3) % tempSeq.length];
 
-        setLiveVitals({ hr: newHr, spo2: newSpo2, rr: Number(newRr.toFixed(1)), temp: newTemp });
-        setLocalTrendBuffer((prev) => [
-          ...prev.slice(-29),
-          { time: timeStr, hr: newHr, spo2: newSpo2, rr: Number(newRr.toFixed(1)), temp: newTemp },
-        ]);
+        const newV = { hr: newHr, spo2: newSpo2, rr: Number(newRr.toFixed(1)), temp: newTemp };
+        setLiveVitals(newV);
+        setLocalTrendBuffer((prev) => [...prev.slice(-29), { time: timeStr, ...newV }]);
+        triggerRiskEvaluation(newV, timeStr);
       }
     }, intervalMs);
 
@@ -462,9 +683,10 @@ export function VitalsMonitorPage({
     streamingRate,
     replaySpeed,
     selectedPatientId,
+    selectedPatient,
   ]);
 
-  // ── Trigger Backend Actions When Scenario Changes ──
+  // ── Scenario Change Handler ──
   const handleScenarioChange = async (newScenario: WearableScenario) => {
     setScenario(newScenario);
     driftStageRef.current = 0;
@@ -559,7 +781,6 @@ export function VitalsMonitorPage({
         return { label: 'Warning', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700' };
       return { label: 'Normal', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' };
     }
-    // temp
     if (val >= 38.5 || val <= 35.0)
       return { label: 'Critical', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700' };
     if (val >= 37.8 || val <= 35.8)
@@ -572,39 +793,15 @@ export function VitalsMonitorPage({
   const rrStatus = getVitalStatus('rr', liveVitals.rr);
   const tempStatus = getVitalStatus('temp', liveVitals.temp);
 
-  // Configuration for single visible trend chart
+  // Trend config
   const trendConfig: Record<
     VitalType,
     { label: string; unit: string; color: string; domain: [number, number]; key: string }
   > = {
-    hr: {
-      label: 'Heart Rate',
-      unit: 'bpm',
-      color: '#0284C7', // Medical Sky Blue
-      domain: [40, 165],
-      key: 'hr',
-    },
-    spo2: {
-      label: 'SpO₂',
-      unit: '%',
-      color: '#0D9488', // Medical Teal
-      domain: [85, 100],
-      key: 'spo2',
-    },
-    temp: {
-      label: 'Body Temperature',
-      unit: '°C',
-      color: '#EA580C', // Warm Amber
-      domain: [35.5, 39.0],
-      key: 'temp',
-    },
-    rr: {
-      label: 'Respiratory Rate',
-      unit: '/min',
-      color: '#6366F1', // Indigo
-      domain: [10, 30],
-      key: 'rr',
-    },
+    hr: { label: 'Heart Rate', unit: 'bpm', color: '#0284C7', domain: [40, 165], key: 'hr' },
+    spo2: { label: 'SpO₂', unit: '%', color: '#0D9488', domain: [85, 100], key: 'spo2' },
+    temp: { label: 'Body Temperature', unit: '°C', color: '#EA580C', domain: [35.5, 39.0], key: 'temp' },
+    rr: { label: 'Respiratory Rate', unit: '/min', color: '#6366F1', domain: [10, 30], key: 'rr' },
   };
 
   const activeTrend = trendConfig[selectedVitalTrend];
@@ -612,17 +809,17 @@ export function VitalsMonitorPage({
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12 animate-in fade-in duration-200">
       {/* ─────────────────────────────────────────────────────────────
-          1. PATIENT VITAL MONITOR (PAGE TITLE & SUBHEADER)
+          1. PATIENT VITAL MONITOR & SYNTHEA GENERATOR BAR
       ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Patient Vital Monitor
           </h1>
           <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-600">
-            {/* Patient P001 Tag */}
+            {/* Dynamic Patient Tag */}
             <span className="font-semibold text-slate-900 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md">
-              Patient P001
+              Patient {selectedPatient?.id || 'P001'}
             </span>
 
             {/* Monitoring Active Indicator */}
@@ -641,25 +838,129 @@ export function VitalsMonitorPage({
           </div>
         </div>
 
-        {/* Small Patient Switcher if needed */}
-        {patients.length > 1 && (
-          <div className="flex items-center space-x-1 text-xs">
-            <span className="text-slate-400 mr-1">Switch:</span>
-            {patients.slice(0, 3).map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setSelectedPatientId(p.id)}
-                className={`px-2 py-1 rounded-md transition-colors ${
-                  p.id === selectedPatientId
-                    ? 'bg-slate-900 text-white font-medium'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-              >
-                {p.id}
-              </button>
-            ))}
+        {/* ── Synthea Dynamic Generation Controls ── */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0">
+          <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
+            <span className="text-slate-500 font-medium">Count:</span>
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={genCount}
+              onChange={(e) => setGenCount(Math.max(1, parseInt(e.target.value) || 5))}
+              className="w-12 bg-white border border-slate-300 rounded px-1.5 py-0.5 text-center font-bold text-slate-900"
+            />
           </div>
-        )}
+
+          <button
+            onClick={handleGenerateSynthea}
+            disabled={isGenerating}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center space-x-1.5 transition-all ${
+              isGenerating
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+            }`}
+          >
+            <Sparkles className={`h-3.5 w-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
+            <span>{isGenerating ? 'Generating...' : 'Generate Synthetic Patients'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Generation Toast */}
+      {genToast && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl px-4 py-2.5 text-xs flex items-center justify-between shadow-xs">
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <span className="font-semibold">{genToast}</span>
+          </div>
+          <button onClick={() => setGenToast(null)} className="text-emerald-700 hover:text-emerald-950 font-bold">
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          2. PATIENT SELECTOR & SYNTHEA CLINICAL PROFILE CARD
+      ───────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center space-x-2">
+            <UserCheck className="h-4 w-4 text-sky-600" />
+            <h2 className="text-sm font-bold text-slate-900">Active Patient Profile</h2>
+            <span className="px-2 py-0.5 text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 rounded-full">
+              Synthetic Patient — Synthea
+            </span>
+          </div>
+
+          {/* Dynamic Select Patient Dropdown */}
+          <div className="flex items-center space-x-2">
+            <label className="text-xs font-semibold text-slate-600">Select Patient:</label>
+            <select
+              value={selectedPatientId}
+              onChange={(e) => setSelectedPatientId(e.target.value)}
+              className="text-xs rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-xs"
+            >
+              {patients.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.id} — {p.name} ({p.age ?? 58}y, {p.gender})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Patient Demographics, Conditions & Medications from Synthea */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          {/* Demographics */}
+          <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 space-y-1.5 text-xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Demographics</span>
+            <div className="text-slate-900 font-bold text-sm">{selectedPatient?.name}</div>
+            <div className="text-slate-600">
+              <span className="font-medium">Age:</span> {selectedPatient?.age ?? 58} |{' '}
+              <span className="font-medium">Gender:</span> {selectedPatient?.gender}
+            </div>
+            <div className="text-slate-500 text-[11px]">
+              Assigned Specialist: <span className="font-medium text-slate-700">{selectedPatient?.specialist_name || 'Dr. Robert Rivera, MD'}</span>
+            </div>
+          </div>
+
+          {/* Medical Conditions */}
+          <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 space-y-1.5 text-xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Medical Conditions (Synthea)</span>
+            <ul className="space-y-1 text-slate-800 font-medium">
+              {(selectedPatient?.conditions && selectedPatient.conditions.length > 0
+                ? selectedPatient.conditions
+                : [selectedPatient?.condition || 'Post-Discharge Monitoring']
+              ).map((c, i) => (
+                <li key={i} className="flex items-start space-x-1.5">
+                  <span className="text-sky-600 font-bold">•</span>
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Current Medications */}
+          <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 space-y-1.5 text-xs">
+            <div className="flex items-center space-x-1">
+              <Pill className="h-3.5 w-3.5 text-slate-400" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Current Medications (Synthea)</span>
+            </div>
+            <ul className="space-y-1 text-slate-800 font-medium">
+              {selectedPatient?.medications && selectedPatient.medications.length > 0 ? (
+                selectedPatient.medications.map((m, i) => (
+                  <li key={i} className="flex items-start space-x-1.5">
+                    <span className="text-teal-600 font-bold">•</span>
+                    <span className="truncate" title={m.name}>{m.name}</span>
+                  </li>
+                ))
+              ) : (
+                <li className="text-slate-500 italic">Standard convalescent maintenance</li>
+              )}
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/* ── Status Banner for Special Sensor Events ── */}
@@ -696,7 +997,7 @@ export function VitalsMonitorPage({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          2. LIVE VITALS (FOUR CLEAN VITAL CARDS)
+          3. LIVE VITALS (FOUR CLEAN VITAL CARDS)
       ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Heart Rate */}
@@ -708,9 +1009,7 @@ export function VitalsMonitorPage({
               </div>
               <span className="text-xs font-semibold text-slate-600">Heart Rate</span>
             </div>
-            <span
-              className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${hrStatus.bg} ${hrStatus.text}`}
-            >
+            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${hrStatus.bg} ${hrStatus.text}`}>
               {probeRemovedDetected ? 'Detached' : hrStatus.label}
             </span>
           </div>
@@ -731,9 +1030,7 @@ export function VitalsMonitorPage({
               </div>
               <span className="text-xs font-semibold text-slate-600">SpO₂</span>
             </div>
-            <span
-              className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${spo2Status.bg} ${spo2Status.text}`}
-            >
+            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${spo2Status.bg} ${spo2Status.text}`}>
               {probeRemovedDetected ? 'Detached' : spo2Status.label}
             </span>
           </div>
@@ -754,9 +1051,7 @@ export function VitalsMonitorPage({
               </div>
               <span className="text-xs font-semibold text-slate-600">Respiratory Rate</span>
             </div>
-            <span
-              className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${rrStatus.bg} ${rrStatus.text}`}
-            >
+            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${rrStatus.bg} ${rrStatus.text}`}>
               {rrStatus.label}
             </span>
           </div>
@@ -777,9 +1072,7 @@ export function VitalsMonitorPage({
               </div>
               <span className="text-xs font-semibold text-slate-600">Body Temperature</span>
             </div>
-            <span
-              className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${tempStatus.bg} ${tempStatus.text}`}
-            >
+            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${tempStatus.bg} ${tempStatus.text}`}>
               {tempStatus.label}
             </span>
           </div>
@@ -793,7 +1086,83 @@ export function VitalsMonitorPage({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          3. VITAL TREND (ONE CLEAN LINE CHART)
+          4. PROTOTYPE DECISION-SUPPORT RISK SCORE (CORE REQUIREMENT)
+      ───────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div>
+            <div className="flex items-center space-x-2">
+              <ShieldAlert className="h-4 w-4 text-sky-600" />
+              <h2 className="text-base font-bold text-slate-900">Prototype Risk Score</h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Explainable Decision-Support Score based on Current Vitals + Trend + Synthea Profile
+            </p>
+          </div>
+
+          {/* Large Score + Badge */}
+          <div className="flex items-center space-x-3">
+            <div className="text-right">
+              <div className="text-2xl font-black text-slate-900 leading-none">
+                {riskAssessment.risk_score} <span className="text-xs text-slate-400 font-semibold">/ 100</span>
+              </div>
+            </div>
+            <span
+              className={`px-3 py-1 text-xs font-bold rounded-full border uppercase tracking-wider ${
+                riskAssessment.risk_level === 'HIGH'
+                  ? 'bg-rose-50 border-rose-300 text-rose-700'
+                  : riskAssessment.risk_level === 'MODERATE'
+                  ? 'bg-amber-50 border-amber-300 text-amber-700'
+                  : 'bg-emerald-50 border-emerald-300 text-emerald-700'
+              }`}
+            >
+              {riskAssessment.risk_level}
+            </span>
+          </div>
+        </div>
+
+        {/* Explainable Score Breakdown */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/70 text-xs">
+            <div className="text-slate-400 font-semibold uppercase text-[10px]">Vital Abnormality</div>
+            <div className="text-base font-bold text-slate-900 mt-0.5">
+              {riskAssessment.components.vital_abnormality} <span className="text-[10px] text-slate-500 font-normal">/ 50 pts</span>
+            </div>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/70 text-xs">
+            <div className="text-slate-400 font-semibold uppercase text-[10px]">Trend Severity</div>
+            <div className="text-base font-bold text-slate-900 mt-0.5">
+              {riskAssessment.components.trend_severity} <span className="text-[10px] text-slate-500 font-normal">/ 30 pts</span>
+            </div>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/70 text-xs">
+            <div className="text-slate-400 font-semibold uppercase text-[10px]">Patient Context (Synthea)</div>
+            <div className="text-base font-bold text-slate-900 mt-0.5">
+              {riskAssessment.components.patient_context} <span className="text-[10px] text-slate-500 font-normal">/ 20 pts</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Explainable Factors List */}
+        <div className="bg-slate-50/60 border border-slate-200/80 rounded-xl p-4 text-xs space-y-2">
+          <div className="font-bold text-slate-800">Why this score was calculated:</div>
+          <ul className="space-y-1.5 text-slate-700">
+            {riskAssessment.factors.map((factor, idx) => (
+              <li key={idx} className="flex items-start space-x-2">
+                <span className="text-sky-500 font-bold">•</span>
+                <span>{factor}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-500 italic flex items-center justify-between">
+            <span>{riskAssessment.alert_reason}</span>
+            <span className="text-[10px] text-slate-400 not-italic font-medium">{riskAssessment.disclaimer}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          5. VITAL TREND (ONE CLEAN LINE CHART)
       ───────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
@@ -852,17 +1221,9 @@ export function VitalsMonitorPage({
         {/* The Single Line Chart */}
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={localTrendBuffer}
-              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-            >
+            <LineChart data={localTrendBuffer} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-              <XAxis
-                dataKey="time"
-                tick={{ fontSize: 10, fill: '#94A3B8' }}
-                tickLine={false}
-                axisLine={{ stroke: '#E2E8F0' }}
-              />
+              <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#94A3B8' }} tickLine={false} axisLine={{ stroke: '#E2E8F0' }} />
               <YAxis
                 domain={activeTrend.domain}
                 tick={{ fontSize: 10, fill: '#94A3B8' }}
@@ -895,25 +1256,20 @@ export function VitalsMonitorPage({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          4. DATA SOURCE (COMPACT SELECTABLE SECTION)
+          6. DATA SOURCE (COMPACT SELECTABLE SECTION)
       ───────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div>
             <h2 className="text-base font-bold text-slate-900">Data Source</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Select physiological telemetry ingestion stream
-            </p>
+            <p className="text-xs text-slate-500 mt-0.5">Select physiological telemetry ingestion stream</p>
           </div>
 
-          {/* Two selectable options: Virtual Wearable | BIDMC Replay */}
           <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs">
             <button
               onClick={() => handleSelectDataSource('WEARABLE')}
               className={`px-4 py-1.5 rounded-lg font-semibold transition-all ${
-                dataSource === 'WEARABLE'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                dataSource === 'WEARABLE' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Virtual Wearable
@@ -921,9 +1277,7 @@ export function VitalsMonitorPage({
             <button
               onClick={() => handleSelectDataSource('BIDMC')}
               className={`px-4 py-1.5 rounded-lg font-semibold transition-all ${
-                dataSource === 'BIDMC'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                dataSource === 'BIDMC' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               BIDMC Replay
@@ -931,15 +1285,12 @@ export function VitalsMonitorPage({
           </div>
         </div>
 
-        {/* ── 5. VIRTUAL WEARABLE CONTROL PANEL ── */}
+        {/* ── Virtual Wearable Simulator Panel ── */}
         {dataSource === 'WEARABLE' && (
           <div className="space-y-4 pt-1 animate-in fade-in duration-150">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Scenario dropdown */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Scenario
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Scenario</label>
                 <select
                   value={scenario}
                   onChange={(e) => handleScenarioChange(e.target.value as WearableScenario)}
@@ -954,11 +1305,8 @@ export function VitalsMonitorPage({
                 </select>
               </div>
 
-              {/* Streaming Rate */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Streaming Rate
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Streaming Rate</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {[1, 5, 10].map((rate) => (
                     <button
@@ -977,11 +1325,8 @@ export function VitalsMonitorPage({
                 </div>
               </div>
 
-              {/* Start / Stop Buttons */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Simulation State
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Simulation State</label>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleStartSimulation}
@@ -1013,28 +1358,20 @@ export function VitalsMonitorPage({
           </div>
         )}
 
-        {/* ── 8. BIDMC REPLAY CONTROL PANEL ── */}
+        {/* ── BIDMC Replay Panel ── */}
         {dataSource === 'BIDMC' && (
           <div className="space-y-4 pt-1 animate-in fade-in duration-150">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* BIDMC Patient Display */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  PhysioNet Record
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">PhysioNet Record</label>
                 <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 flex items-center justify-between">
                   <span>BIDMC Patient: Patient 01</span>
-                  <span className="text-[10px] font-mono text-slate-500 font-normal">
-                    (bidmc_sample_vitals.csv)
-                  </span>
+                  <span className="text-[10px] font-mono text-slate-500 font-normal">(bidmc_sample_vitals.csv)</span>
                 </div>
               </div>
 
-              {/* Replay Speed */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Replay Speed
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Replay Speed</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {[1, 2, 5].map((speed) => (
                     <button
@@ -1056,11 +1393,8 @@ export function VitalsMonitorPage({
                 </div>
               </div>
 
-              {/* Replay Controls: Start / Pause */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Replay Playback
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Replay Playback</label>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleStartReplay}
@@ -1090,19 +1424,16 @@ export function VitalsMonitorPage({
               </div>
             </div>
 
-            {/* 7. Unobtrusive note about Body Temperature */}
             <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 pt-1">
               <Info className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-              <span>
-                Body temperature is generated by the simulator because it is not available in the BIDMC dataset.
-              </span>
+              <span>Body temperature is generated by the simulator because it is not available in the BIDMC dataset.</span>
             </div>
           </div>
         )}
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          9. RECENT ALERTS (CONCISE SECTION)
+          7. RECENT ALERTS (CONCISE SECTION)
       ───────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-slate-100">
@@ -1138,9 +1469,7 @@ export function VitalsMonitorPage({
                     <p className="text-slate-600 mt-0.5 leading-relaxed">{alt.description}</p>
                   </div>
                 </div>
-                <div className="text-[11px] font-mono text-slate-400 whitespace-nowrap">
-                  Time: {alt.time}
-                </div>
+                <div className="text-[11px] font-mono text-slate-400 whitespace-nowrap">Time: {alt.time}</div>
               </div>
             );
           })}
@@ -1148,10 +1477,14 @@ export function VitalsMonitorPage({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          10. DATA FLOW (VERY SMALL HORIZONTAL FLOW WITH ARROWS)
+          8. DATA FLOW (MINIMAL HORIZONTAL FLOW WITH ARROWS)
       ───────────────────────────────────────────────────────────── */}
       <div className="pt-2">
         <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600">
+          <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+            Synthea Profiles
+          </span>
+          <ArrowRight className="h-3 w-3 text-slate-400" />
           <span className="font-semibold text-slate-900">
             {dataSource === 'WEARABLE' ? 'Virtual Wearable' : 'BIDMC Replay'}
           </span>
@@ -1160,9 +1493,9 @@ export function VitalsMonitorPage({
           <ArrowRight className="h-3 w-3 text-slate-400" />
           <span className="font-semibold text-slate-900">HAPI FHIR</span>
           <ArrowRight className="h-3 w-3 text-slate-400" />
-          <span className="font-semibold text-slate-900">Detection Engine</span>
+          <span className="font-semibold text-slate-900">Patient-Specific Risk Engine</span>
           <ArrowRight className="h-3 w-3 text-slate-400" />
-          <span className="font-semibold text-slate-900">Alert</span>
+          <span className="font-semibold text-slate-900">Decision-Support Alert</span>
         </div>
       </div>
     </div>

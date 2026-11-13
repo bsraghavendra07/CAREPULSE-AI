@@ -30,3 +30,4 @@ Start-Sleep -Seconds 3
 # Verify ports
 $active = Get-NetTCPConnection -LocalPort 8000, 5173 -ErrorAction SilentlyContinue
 $active | Select-Object LocalAddress, LocalPort, State, OwningProcess | Format-Table -AutoSize
+

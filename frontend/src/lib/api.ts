@@ -12,6 +12,50 @@ export async function fetchPatients(): Promise<PatientProfile[]> {
   return res.json();
 }
 
+export async function generateSyntheaPatients(count: number = 5): Promise<{
+  status: string;
+  count: number;
+  patients: PatientProfile[];
+  message: string;
+}> {
+  const res = await fetch(`${API_BASE}/patients/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ count }),
+  });
+  if (!res.ok) throw new Error(`Failed to generate Synthea patients: ${res.statusText}`);
+  return res.json();
+}
+
+export interface PatientRiskResult {
+  patient_id: string;
+  patient_name?: string;
+  risk_score: number;
+  risk_level: 'LOW' | 'MODERATE' | 'HIGH';
+  components: {
+    vital_abnormality: number;
+    trend_severity: number;
+    patient_context: number;
+  };
+  factors: string[];
+  alert_title: string;
+  alert_reason: string;
+  primary_condition: string;
+  conditions: string[];
+  medications: Array<{ name: string; dosage?: string }>;
+  disclaimer: string;
+}
+
+export async function evaluatePatientRisk(patientId: string, vitals: Record<string, any>): Promise<PatientRiskResult> {
+  const res = await fetch(`${API_BASE}/patients/evaluate-risk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ patient_id: patientId, vitals }),
+  });
+  if (!res.ok) throw new Error(`Failed to evaluate patient risk: ${res.statusText}`);
+  return res.json();
+}
+
 export async function fetchPatient(id: string): Promise<PatientProfile> {
   const res = await fetch(`${API_BASE}/patients/${id}`);
   if (!res.ok) throw new Error(`Failed to fetch patient ${id}: ${res.statusText}`);

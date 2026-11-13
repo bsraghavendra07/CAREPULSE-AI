@@ -133,9 +133,9 @@ export function PatientsPage({
       if (!matchSearch) return false;
 
       if (filterCondition === 'scale2') return p.scale2_prescribed;
-      if (filterCondition === 'cardiac') return p.id === 'P-001' || p.id === 'P-004';
-      if (filterCondition === 'sepsis') return p.id === 'P-003';
-      if (filterCondition === 'postop') return p.id === 'P-005';
+      if (filterCondition === 'cardiac') return (p.condition || '').toLowerCase().includes('cardiac') || (p.condition || '').toLowerCase().includes('heart') || (p.condition || '').toLowerCase().includes('infarction') || (p.condition || '').toLowerCase().includes('fibrillation');
+      if (filterCondition === 'sepsis') return (p.condition || '').toLowerCase().includes('sepsis') || (p.condition || '').toLowerCase().includes('infection');
+      if (filterCondition === 'postop') return (p.condition || '').toLowerCase().includes('arthroplasty') || (p.condition || '').toLowerCase().includes('post') || (p.condition || '').toLowerCase().includes('surg');
 
       return true;
     });
@@ -221,7 +221,10 @@ export function PatientsPage({
           const news2 = tick?.news2;
           const vitals = tick?.vitals;
           const age = calculateAge(p.birthDate);
-          const meds = PATIENT_MEDICATIONS[p.id] || ['Standard discharge medications'];
+          const meds =
+            p.medications && p.medications.length > 0
+              ? p.medications.map((m) => (typeof m === 'string' ? m : m.name))
+              : PATIENT_MEDICATIONS[p.id] || ['Standard discharge medications'];
 
           const hr = vitals?.heart_rate?.value ?? p.baseline.heart_rate;
           const spo2 = vitals?.oxygen_saturation?.value ?? p.baseline.oxygen_saturation;

@@ -30,6 +30,7 @@ from app.core.news2 import evaluate_hypercapnic_failure
 from app.core.specialist_router import categorize_patient
 from app.core.staff_registry import StaffStatus, staff_registry
 from app.ml.isolation_forest_model import initialize_ml_model
+from app.simulation.synthea_generator import load_all_synthea_patients, SyntheaGenerator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,76 +40,23 @@ telemetry_manager = TelemetryManager()
 
 
 def _load_synthea_profiles() -> dict[str, dict[str, Any]]:
-    """Parse patient JSON files in app/data/synthea/."""
+    """Parse real Synthea FHIR R4 JSON bundles from app/data/synthea/."""
     synthea_dir = Path(__file__).resolve().parent / "data" / "synthea"
-    bidmc_csv_path = Path(__file__).resolve().parent / "data" / "bidmc" / "bidmc_sample_vitals.csv"
-
-    patients: dict[str, dict[str, Any]] = {}
-    for json_file in sorted(synthea_dir.glob("*.json")):
-        try:
-            with open(json_file, encoding="utf-8") as f:
-                data = json.load(f)
-
-            pid = data.get("id", json_file.stem)
-            name_obj = data.get("name", [{}])[0]
-            family = name_obj.get("family", "")
-            given = " ".join(name_obj.get("given", []))
-            full_name = f"{given} {family}".strip() or pid
-
-            # Parse extensions
-            exts = {ext.get("url"): ext for ext in data.get("extension", [])}
-
-            condition = exts.get("urn:minearena:condition", {}).get("valueString", "Post-Discharge Monitoring")
-            scale2_prescribed_ext = exts.get("urn:minearena:scale2_prescribed", {}).get("valueBoolean", False)
-            risk_summary = exts.get("urn:minearena:risk_summary", {}).get("valueString", "")
-
-            # Personalization Rule 1: Dynamic clinical evaluation of hypercapnic respiratory failure
-            is_scale2, target_spo2_range, scale2_reason = evaluate_hypercapnic_failure(
-                {"condition": condition, "risk_summary": risk_summary, "scale2_prescribed": scale2_prescribed_ext}
-            )
-
-            baseline_hr = float(exts.get("urn:minearena:baseline_hr", {}).get("valueDecimal", 75))
-            baseline_spo2 = float(exts.get("urn:minearena:baseline_spo2", {}).get("valueDecimal", 97))
-            baseline_rr = float(exts.get("urn:minearena:baseline_rr", {}).get("valueDecimal", 16))
-            baseline_sbp = float(exts.get("urn:minearena:baseline_sbp", {}).get("valueDecimal", 120))
-            baseline_temp = float(exts.get("urn:minearena:baseline_temp", {}).get("valueDecimal", 36.8))
-
-            profile = {
-                "id": pid,
-                "name": full_name,
-                "gender": data.get("gender", "unknown"),
-                "birthDate": data.get("birthDate", "1970-01-01"),
-                "condition": condition,
-                "scale2_prescribed": is_scale2,
-                "spo2_scale": 2 if is_scale2 else 1,
-                "spo2_target": target_spo2_range,
-                "scale2_justification": scale2_reason,
-                "riskSummary": risk_summary,
-                "baseline": {
-                    "heart_rate": baseline_hr,
-                    "oxygen_saturation": baseline_spo2,
-                    "respiratory_rate": baseline_rr,
-                    "systolic_bp": baseline_sbp,
-                    "body_temperature": baseline_temp,
-                },
-                # Flat keys for WearableSimulator
-                "baseline_hr": baseline_hr,
-                "baseline_spo2": baseline_spo2,
-                "baseline_rr": baseline_rr,
-                "baseline_sbp": baseline_sbp,
-                "baseline_temp": baseline_temp,
-                # Connect BIDMC CSV replay for patients
-                "bidmc_csv": str(bidmc_csv_path) if bidmc_csv_path.exists() else None,
-            }
-            # Feature 1: Automatically assign relevant medical department & specialist based on conditions
-            specialist_meta = categorize_patient(profile)
-            profile.update(specialist_meta)
-
-            patients[pid] = profile
-            logger.info("Loaded patient profile %s (%s) -> %s (%s)", pid, full_name, profile.get("department"), profile.get("specialist_name"))
-        except Exception as exc:
-            logger.error("Failed to load patient from %s: %s", json_file, exc)
-
+    patients = load_all_synthea_patients(synthea_dir)
+    if not patients or len(patients) < 5:
+        gen = SyntheaGenerator(output_dir=synthea_dir)
+        gen.generate_and_save_batch(5)
+        patients = load_all_synthea_patients(synthea_dir)
+    
+    for pid, profile in patients.items():
+        logger.info(
+            "Loaded Synthea patient %s (%s, %s yo) -> Conditions: %s | Meds: %d",
+            pid,
+            profile.get("name"),
+            profile.get("age"),
+            profile.get("condition"),
+            len(profile.get("medications", [])),
+        )
     return patients
 
 

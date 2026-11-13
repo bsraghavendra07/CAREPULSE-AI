@@ -182,6 +182,7 @@ export interface TelemetryTick {
   fhir_observation_id: string;
   probe_removed?: boolean;
   active_simulation_event?: ActiveSimulationEvent | null;
+  patient_risk?: any;
 }
 
 export interface BenchmarkMetric {
